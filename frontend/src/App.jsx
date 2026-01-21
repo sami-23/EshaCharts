@@ -2,8 +2,10 @@ import React, { useState, useCallback } from 'react';
 import FileUpload from './components/FileUpload';
 import GraphDisplay from './components/GraphDisplay';
 import ControlPanel from './components/ControlPanel';
+import CompareControlPanel from './components/CompareControlPanel';
 import Navigation from './components/Navigation';
 import AxisSelector from './components/AxisSelector';
+import FileSelectorModal from './components/FileSelectorModal';
 import './App.css';
 
 // Use environment variable for API URL, fallback to localhost for development
@@ -34,6 +36,19 @@ function App() {
   const [pendingSessionId, setPendingSessionId] = useState(null);
   const [axisSelectIndex, setAxisSelectIndex] = useState(0); // Current file being configured
   const [showAxisSelector, setShowAxisSelector] = useState(false);
+
+  // Compare mode state
+  const [isCompareMode, setIsCompareMode] = useState(false);
+  const [compareFileIndices, setCompareFileIndices] = useState([]);
+  const [showFileSelector, setShowFileSelector] = useState(false);
+  const [compareSettings, setCompareSettings] = useState({
+    showTitle: true,
+    showAxisLabels: true,
+    customTitle: '',
+    xAxisFormat: 'normal',
+    yAxisFormat: 'normal',
+  });
+  const [compareCurveSettings, setCompareCurveSettings] = useState({});
 
   // Initialize curve settings for a file based on its y_data
   const initializeCurveSettings = useCallback((data) => {
@@ -245,6 +260,80 @@ function App() {
     });
   }, [currentIndex]);
 
+  // File colors for compare mode - each file gets a distinct base color
+  const fileColors = [
+    '#1f77b4', // Blue
+    '#ff7f0e', // Orange
+    '#2ca02c', // Green
+    '#d62728', // Red
+    '#9467bd', // Purple
+    '#8c564b', // Brown
+    '#e377c2', // Pink
+    '#7f7f7f', // Gray
+  ];
+
+  // Enter compare mode - opens file selector modal
+  const enterCompareMode = useCallback(() => {
+    setShowFileSelector(true);
+  }, []);
+
+  // Confirm compare selection - validates and initializes compare mode
+  const confirmCompareSelection = useCallback((selectedIndices) => {
+    if (selectedIndices.length < 2) {
+      return; // Need at least 2 files
+    }
+
+    // Initialize curve settings for all selected files
+    const newCurveSettings = {};
+    selectedIndices.forEach((fileIndex, fileColorIdx) => {
+      const file = files[fileIndex];
+      const baseColor = fileColors[fileColorIdx % fileColors.length];
+
+      file.y_data.forEach((curve, curveIdx) => {
+        const curveKey = `${fileIndex}-${curveIdx}`;
+        newCurveSettings[curveKey] = {
+          visible: true,
+          color: baseColor,
+          width: 2,
+          name: curve.name,
+          fileName: file.filename || file.title,
+        };
+      });
+    });
+
+    setCompareCurveSettings(newCurveSettings);
+    setCompareFileIndices(selectedIndices);
+    setShowFileSelector(false);
+    setIsCompareMode(true);
+  }, [files, fileColors]);
+
+  // Exit compare mode
+  const exitCompareMode = useCallback(() => {
+    setIsCompareMode(false);
+    setCompareFileIndices([]);
+    setCompareCurveSettings({});
+    setCompareSettings({
+      showTitle: true,
+      showAxisLabels: true,
+      customTitle: '',
+      xAxisFormat: 'normal',
+      yAxisFormat: 'normal',
+    });
+  }, []);
+
+  // Update compare display settings
+  const updateCompareSettings = useCallback((updates) => {
+    setCompareSettings((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  // Update individual curve in compare mode
+  const updateCompareCurve = useCallback((curveKey, updates) => {
+    setCompareCurveSettings((prev) => ({
+      ...prev,
+      [curveKey]: { ...prev[curveKey], ...updates },
+    }));
+  }, []);
+
   // Reset session
   const handleReset = useCallback(async () => {
     if (sessionId) {
@@ -260,6 +349,11 @@ function App() {
     setCurrentData(null);
     setGraphSettings({});
     setError(null);
+    // Exit compare mode on reset
+    setIsCompareMode(false);
+    setCompareFileIndices([]);
+    setCompareCurveSettings({});
+    setShowFileSelector(false);
   }, [sessionId]);
 
   // Toggle theme
@@ -268,6 +362,14 @@ function App() {
   }, []);
 
   const currentSettings = graphSettings[currentIndex] || getDefaultSettings();
+
+  // Prepare compare data with file indices
+  const compareData = isCompareMode
+    ? compareFileIndices.map((fileIndex) => ({
+        ...files[fileIndex],
+        _compareFileIndex: fileIndex,
+      }))
+    : [];
 
   return (
     <div className={`app ${theme}`}>
@@ -328,11 +430,22 @@ function App() {
                 <div className="loading">Loading...</div>
               ) : error ? (
                 <div className="error">{error}</div>
+              ) : isCompareMode ? (
+                <GraphDisplay
+                  data={null}
+                  settings={currentSettings}
+                  theme={theme}
+                  isCompareMode={true}
+                  compareData={compareData}
+                  compareCurveSettings={compareCurveSettings}
+                  compareSettings={compareSettings}
+                />
               ) : currentData ? (
                 <GraphDisplay
                   data={currentData}
                   settings={currentSettings}
                   theme={theme}
+                  isCompareMode={false}
                 />
               ) : null}
             </div>
@@ -343,9 +456,22 @@ function App() {
                 totalFiles={files.length}
                 onNavigate={navigateToFile}
                 files={files}
+                isCompareMode={isCompareMode}
+                onEnterCompare={enterCompareMode}
+                onExitCompare={exitCompareMode}
+                compareFileCount={compareFileIndices.length}
               />
 
-              {currentData && (
+              {isCompareMode ? (
+                <CompareControlPanel
+                  compareData={compareData}
+                  compareSettings={compareSettings}
+                  compareCurveSettings={compareCurveSettings}
+                  onUpdateSettings={updateCompareSettings}
+                  onUpdateCurve={updateCompareCurve}
+                  theme={theme}
+                />
+              ) : currentData && (
                 <ControlPanel
                   data={currentData}
                   settings={currentSettings}
@@ -367,6 +493,14 @@ function App() {
           <span>{error}</span>
           <button onClick={() => setError(null)}>×</button>
         </div>
+      )}
+
+      {showFileSelector && (
+        <FileSelectorModal
+          files={files}
+          onConfirm={confirmCompareSelection}
+          onCancel={() => setShowFileSelector(false)}
+        />
       )}
     </div>
   );

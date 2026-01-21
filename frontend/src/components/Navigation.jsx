@@ -1,6 +1,15 @@
 import React from 'react';
 
-function Navigation({ currentIndex, totalFiles, onNavigate, files }) {
+function Navigation({
+  currentIndex,
+  totalFiles,
+  onNavigate,
+  files,
+  isCompareMode,
+  onEnterCompare,
+  onExitCompare,
+  compareFileCount,
+}) {
   const handlePrevious = () => {
     if (currentIndex > 0) {
       onNavigate(currentIndex - 1);
@@ -17,6 +26,23 @@ function Navigation({ currentIndex, totalFiles, onNavigate, files }) {
     const index = parseInt(e.target.value, 10);
     onNavigate(index);
   };
+
+  // If in compare mode, show compare-specific navigation
+  if (isCompareMode) {
+    return (
+      <div className="navigation">
+        <h3>Compare Mode</h3>
+        <div className="compare-mode-info">
+          <p>
+            Comparing <strong>{compareFileCount}</strong> files
+          </p>
+        </div>
+        <button className="compare-btn exit" onClick={onExitCompare}>
+          Exit Compare Mode
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="navigation">
@@ -45,17 +71,23 @@ function Navigation({ currentIndex, totalFiles, onNavigate, files }) {
       </div>
 
       {totalFiles > 1 && (
-        <select
-          className="file-select"
-          value={currentIndex}
-          onChange={handleSelectChange}
-        >
-          {files.map((file, idx) => (
-            <option key={idx} value={idx}>
-              {file.title || file.filename}
-            </option>
-          ))}
-        </select>
+        <>
+          <select
+            className="file-select"
+            value={currentIndex}
+            onChange={handleSelectChange}
+          >
+            {files.map((file, idx) => (
+              <option key={idx} value={idx}>
+                {file.title || file.filename}
+              </option>
+            ))}
+          </select>
+
+          <button className="compare-btn" onClick={onEnterCompare}>
+            Compare Files
+          </button>
+        </>
       )}
 
       {files[currentIndex] && (

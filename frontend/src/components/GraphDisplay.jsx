@@ -4,11 +4,54 @@ import createPlotlyComponent from 'react-plotly.js/factory';
 
 const Plot = createPlotlyComponent(Plotly);
 
-function GraphDisplay({ data, settings, theme }) {
+function GraphDisplay({
+  data,
+  settings,
+  theme,
+  isCompareMode,
+  compareData,
+  compareCurveSettings,
+  compareSettings,
+}) {
   const plotRef = useRef(null);
 
   // Generate plot traces
   const traces = useMemo(() => {
+    // Compare mode: generate traces from all files
+    if (isCompareMode && compareData && compareCurveSettings) {
+      const allTraces = [];
+
+      compareData.forEach((fileData, fileIdx) => {
+        const fileName = fileData.filename || fileData.title || `File ${fileIdx + 1}`;
+
+        fileData.y_data.forEach((yData, curveIdx) => {
+          const curveKey = `${fileData._compareFileIndex}-${curveIdx}`;
+          const curveSettings = compareCurveSettings[curveKey] || {
+            visible: true,
+            color: '#1f77b4',
+            width: 2,
+          };
+
+          allTraces.push({
+            x: fileData.x_data,
+            y: yData.data,
+            type: 'scatter',
+            mode: 'lines',
+            name: `${fileName} - ${yData.name}`,
+            visible: curveSettings.visible ? true : 'legendonly',
+            line: {
+              color: curveSettings.color,
+              width: curveSettings.width,
+            },
+            hovertemplate: `${fileName}<br>${yData.name}<br>%{x}<br>%{y}<extra></extra>`,
+          });
+        });
+      });
+
+      return allTraces;
+    }
+
+    // Single file mode
     if (!data || !settings.curves) return [];
 
     return data.y_data.map((yData, idx) => {
@@ -36,18 +79,11 @@ function GraphDisplay({ data, settings, theme }) {
         hovertemplate: '%{x}<br>%{y}<extra></extra>',
       };
     });
-  }, [data, settings]);
+  }, [data, settings, isCompareMode, compareData, compareCurveSettings]);
 
   // Generate layout
   const layout = useMemo(() => {
     const isDark = theme === 'dark';
-
-    const xAxisName = settings.swapAxes
-      ? (data.y_data[0]?.name || 'Y')
-      : data.x_name;
-    const yAxisName = settings.swapAxes
-      ? data.x_name
-      : (data.y_data.length === 1 ? data.y_data[0].name : 'Value');
 
     // Axis format configuration
     const getTickFormat = (format) => {
@@ -59,6 +95,77 @@ function GraphDisplay({ data, settings, theme }) {
           return '';
       }
     };
+
+    // Compare mode layout
+    if (isCompareMode && compareData && compareSettings) {
+      const firstFile = compareData[0];
+      const title = compareSettings.customTitle || 'Comparison';
+
+      return {
+        title: compareSettings.showTitle
+          ? {
+              text: title,
+              font: {
+                size: 18,
+                color: isDark ? '#e8e8e8' : '#212529',
+              },
+            }
+          : null,
+        xaxis: {
+          title: compareSettings.showAxisLabels
+            ? {
+                text: firstFile?.x_name || 'X',
+                font: { size: 14, color: isDark ? '#a0a0a0' : '#6c757d' },
+              }
+            : null,
+          tickfont: { color: isDark ? '#e8e8e8' : '#212529' },
+          gridcolor: isDark ? '#3a3a5a' : '#e9ecef',
+          zerolinecolor: isDark ? '#3a3a5a' : '#dee2e6',
+          tickformat: getTickFormat(compareSettings.xAxisFormat),
+          exponentformat: compareSettings.xAxisFormat === 'scientific' ? 'e' : 'none',
+        },
+        yaxis: {
+          title: compareSettings.showAxisLabels
+            ? {
+                text: 'Value',
+                font: { size: 14, color: isDark ? '#a0a0a0' : '#6c757d' },
+              }
+            : null,
+          tickfont: { color: isDark ? '#e8e8e8' : '#212529' },
+          gridcolor: isDark ? '#3a3a5a' : '#e9ecef',
+          zerolinecolor: isDark ? '#3a3a5a' : '#dee2e6',
+          tickformat: getTickFormat(compareSettings.yAxisFormat),
+          exponentformat: compareSettings.yAxisFormat === 'scientific' ? 'e' : 'none',
+        },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        font: {
+          family: 'Inter, sans-serif',
+          color: isDark ? '#e8e8e8' : '#212529',
+        },
+        margin: { l: 60, r: 30, t: compareSettings.showTitle ? 60 : 30, b: 50 },
+        showlegend: true,
+        legend: {
+          orientation: 'h',
+          yanchor: 'bottom',
+          y: 1.02,
+          xanchor: 'right',
+          x: 1,
+          font: { size: 11, color: isDark ? '#e8e8e8' : '#212529' },
+          bgcolor: 'transparent',
+        },
+        hovermode: 'closest',
+        dragmode: 'zoom',
+      };
+    }
+
+    // Single file mode layout
+    const xAxisName = settings.swapAxes
+      ? (data.y_data[0]?.name || 'Y')
+      : data.x_name;
+    const yAxisName = settings.swapAxes
+      ? data.x_name
+      : (data.y_data.length === 1 ? data.y_data[0].name : 'Value');
 
     return {
       title: settings.showTitle
@@ -116,7 +223,15 @@ function GraphDisplay({ data, settings, theme }) {
       hovermode: 'closest',
       dragmode: 'zoom', // Enable zoom by default
     };
-  }, [data, settings, theme]);
+  }, [data, settings, theme, isCompareMode, compareData, compareSettings]);
+
+  // Determine filename for export
+  const exportFilename = useMemo(() => {
+    if (isCompareMode && compareSettings) {
+      return compareSettings.customTitle || 'comparison';
+    }
+    return data?.title || 'graph';
+  }, [isCompareMode, compareSettings, data]);
 
   // Plot configuration
   const config = useMemo(
@@ -142,14 +257,14 @@ function GraphDisplay({ data, settings, theme }) {
       modeBarButtonsToRemove: ['lasso2d', 'select2d', 'sendDataToCloud'],
       toImageButtonOptions: {
         format: 'png',
-        filename: data.title,
+        filename: exportFilename,
         height: 800,
         width: 1200,
         scale: 2,
       },
       scrollZoom: true, // Enable scroll to zoom
     }),
-    [data.title]
+    [exportFilename]
   );
 
   // Store reference to plot div for export
