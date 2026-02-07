@@ -20,33 +20,76 @@ function GraphDisplay({
     // Compare mode: generate traces from all files
     if (isCompareMode && compareData && compareCurveSettings) {
       const allTraces = [];
+      const isSequential = compareSettings?.compareLayout === 'sequential';
 
-      compareData.forEach((fileData, fileIdx) => {
-        const fileName = fileData.filename || fileData.title || `File ${fileIdx + 1}`;
+      if (isSequential) {
+        // Sequential mode: offset each file's x-data so they appear one after another
+        let xOffset = 0;
 
-        fileData.y_data.forEach((yData, curveIdx) => {
-          const curveKey = `${fileData._compareFileIndex}-${curveIdx}`;
-          const curveSettings = compareCurveSettings[curveKey] || {
-            visible: true,
-            color: '#1f77b4',
-            width: 2,
-          };
+        compareData.forEach((fileData, fileIdx) => {
+          const fileName = fileData.filename || fileData.title || `File ${fileIdx + 1}`;
+          const xData = fileData.x_data.map((v) => (typeof v === 'number' ? v : parseFloat(v) || 0));
+          const xMin = Math.min(...xData);
+          const xMax = Math.max(...xData);
+          const xRange = xMax - xMin;
 
-          allTraces.push({
-            x: fileData.x_data,
-            y: yData.data,
-            type: 'scatter',
-            mode: 'lines',
-            name: `${fileName} - ${yData.name}`,
-            visible: curveSettings.visible ? true : 'legendonly',
-            line: {
-              color: curveSettings.color,
-              width: curveSettings.width,
-            },
-            hovertemplate: `${fileName}<br>${yData.name}<br>%{x}<br>%{y}<extra></extra>`,
+          fileData.y_data.forEach((yData, curveIdx) => {
+            const curveKey = `${fileData._compareFileIndex}-${curveIdx}`;
+            const curveSettings = compareCurveSettings[curveKey] || {
+              visible: true,
+              color: '#1f77b4',
+              width: 2,
+            };
+
+            const offsetXData = xData.map((v) => v - xMin + xOffset);
+
+            allTraces.push({
+              x: offsetXData,
+              y: yData.data,
+              type: 'scatter',
+              mode: 'lines',
+              name: `${fileName} - ${yData.name}`,
+              visible: curveSettings.visible ? true : 'legendonly',
+              line: {
+                color: curveSettings.color,
+                width: curveSettings.width,
+              },
+              hovertemplate: `${fileName}<br>${yData.name}<br>%{x}<br>%{y}<extra></extra>`,
+            });
+          });
+
+          // Add gap between files
+          xOffset += xRange + xRange * 0.05;
+        });
+      } else {
+        // Overlay mode: all files share the same x-axis
+        compareData.forEach((fileData, fileIdx) => {
+          const fileName = fileData.filename || fileData.title || `File ${fileIdx + 1}`;
+
+          fileData.y_data.forEach((yData, curveIdx) => {
+            const curveKey = `${fileData._compareFileIndex}-${curveIdx}`;
+            const curveSettings = compareCurveSettings[curveKey] || {
+              visible: true,
+              color: '#1f77b4',
+              width: 2,
+            };
+
+            allTraces.push({
+              x: fileData.x_data,
+              y: yData.data,
+              type: 'scatter',
+              mode: 'lines',
+              name: `${fileName} - ${yData.name}`,
+              visible: curveSettings.visible ? true : 'legendonly',
+              line: {
+                color: curveSettings.color,
+                width: curveSettings.width,
+              },
+              hovertemplate: `${fileName}<br>${yData.name}<br>%{x}<br>%{y}<extra></extra>`,
+            });
           });
         });
-      });
+      }
 
       return allTraces;
     }
@@ -86,13 +129,15 @@ function GraphDisplay({
     const isDark = theme === 'dark';
 
     // Axis format configuration
-    const getTickFormat = (format) => {
+    const getAxisFormatConfig = (format) => {
       switch (format) {
         case 'scientific':
-          return '.2e';
+          return { tickformat: '.2e', exponentformat: 'e', type: undefined };
+        case 'exponential':
+          return { tickformat: '', exponentformat: 'power', type: undefined };
         case 'normal':
         default:
-          return '';
+          return { tickformat: '', exponentformat: 'none', type: undefined };
       }
     };
 
@@ -100,6 +145,52 @@ function GraphDisplay({
     if (isCompareMode && compareData && compareSettings) {
       const firstFile = compareData[0];
       const title = compareSettings.customTitle || 'Comparison';
+      const xFormat = getAxisFormatConfig(compareSettings.xAxisFormat);
+      const yFormat = getAxisFormatConfig(compareSettings.yAxisFormat);
+      const bgColor = compareSettings.bgColor || 'transparent';
+      const isSequential = compareSettings.compareLayout === 'sequential';
+
+      // Build separator lines and annotations for sequential mode
+      const shapes = [];
+      const annotations = [];
+      if (isSequential && compareData.length > 1) {
+        let xOffset = 0;
+        compareData.forEach((fileData, fileIdx) => {
+          const xData = fileData.x_data.map((v) => (typeof v === 'number' ? v : parseFloat(v) || 0));
+          const xMin = Math.min(...xData);
+          const xMax = Math.max(...xData);
+          const xRange = xMax - xMin;
+          const segStart = xOffset;
+          const segEnd = xOffset + xRange;
+
+          // Add annotation for file name at center of segment
+          const fileName = fileData.filename || fileData.title || `File ${fileIdx + 1}`;
+          annotations.push({
+            x: (segStart + segEnd) / 2,
+            y: 1.06,
+            xref: 'x',
+            yref: 'paper',
+            text: fileName,
+            showarrow: false,
+            font: { size: 10, color: isDark ? '#a0a0a0' : '#6c757d' },
+          });
+
+          // Add vertical separator line between files (except before first)
+          if (fileIdx > 0) {
+            shapes.push({
+              type: 'line',
+              x0: segStart - xRange * 0.025,
+              x1: segStart - xRange * 0.025,
+              y0: 0,
+              y1: 1,
+              yref: 'paper',
+              line: { color: isDark ? '#5a5a7a' : '#adb5bd', width: 1, dash: 'dash' },
+            });
+          }
+
+          xOffset += xRange + xRange * 0.05;
+        });
+      }
 
       return {
         title: compareSettings.showTitle
@@ -114,31 +205,31 @@ function GraphDisplay({
         xaxis: {
           title: compareSettings.showAxisLabels
             ? {
-                text: firstFile?.x_name || 'X',
+                text: compareSettings.customXLabel || firstFile?.x_name || 'X',
                 font: { size: 14, color: isDark ? '#a0a0a0' : '#6c757d' },
               }
             : null,
           tickfont: { color: isDark ? '#e8e8e8' : '#212529' },
           gridcolor: isDark ? '#3a3a5a' : '#e9ecef',
           zerolinecolor: isDark ? '#3a3a5a' : '#dee2e6',
-          tickformat: getTickFormat(compareSettings.xAxisFormat),
-          exponentformat: compareSettings.xAxisFormat === 'scientific' ? 'e' : 'none',
+          tickformat: xFormat.tickformat,
+          exponentformat: xFormat.exponentformat,
         },
         yaxis: {
           title: compareSettings.showAxisLabels
             ? {
-                text: 'Value',
+                text: compareSettings.customYLabel || 'Value',
                 font: { size: 14, color: isDark ? '#a0a0a0' : '#6c757d' },
               }
             : null,
           tickfont: { color: isDark ? '#e8e8e8' : '#212529' },
           gridcolor: isDark ? '#3a3a5a' : '#e9ecef',
           zerolinecolor: isDark ? '#3a3a5a' : '#dee2e6',
-          tickformat: getTickFormat(compareSettings.yAxisFormat),
-          exponentformat: compareSettings.yAxisFormat === 'scientific' ? 'e' : 'none',
+          tickformat: yFormat.tickformat,
+          exponentformat: yFormat.exponentformat,
         },
         paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
+        plot_bgcolor: bgColor,
         font: {
           family: 'Inter, sans-serif',
           color: isDark ? '#e8e8e8' : '#212529',
@@ -148,7 +239,7 @@ function GraphDisplay({
         legend: {
           orientation: 'h',
           yanchor: 'bottom',
-          y: 1.02,
+          y: isSequential ? 1.12 : 1.02,
           xanchor: 'right',
           x: 1,
           font: { size: 11, color: isDark ? '#e8e8e8' : '#212529' },
@@ -156,21 +247,29 @@ function GraphDisplay({
         },
         hovermode: 'closest',
         dragmode: 'zoom',
+        shapes: shapes,
+        annotations: annotations,
       };
     }
 
     // Single file mode layout
-    const xAxisName = settings.swapAxes
+    const defaultXName = settings.swapAxes
       ? (data.y_data[0]?.name || 'Y')
       : data.x_name;
-    const yAxisName = settings.swapAxes
+    const defaultYName = settings.swapAxes
       ? data.x_name
       : (data.y_data.length === 1 ? data.y_data[0].name : 'Value');
+    const xAxisName = settings.customXLabel || defaultXName;
+    const yAxisName = settings.customYLabel || defaultYName;
+    const xFormat = getAxisFormatConfig(settings.xAxisFormat);
+    const yFormat = getAxisFormatConfig(settings.yAxisFormat);
+    const titleText = settings.customTitle || data.title;
+    const bgColor = settings.bgColor || 'transparent';
 
     return {
       title: settings.showTitle
         ? {
-            text: data.title,
+            text: titleText,
             font: {
               size: 18,
               color: isDark ? '#e8e8e8' : '#212529',
@@ -187,8 +286,8 @@ function GraphDisplay({
         tickfont: { color: isDark ? '#e8e8e8' : '#212529' },
         gridcolor: isDark ? '#3a3a5a' : '#e9ecef',
         zerolinecolor: isDark ? '#3a3a5a' : '#dee2e6',
-        tickformat: getTickFormat(settings.xAxisFormat),
-        exponentformat: settings.xAxisFormat === 'scientific' ? 'e' : 'none',
+        tickformat: xFormat.tickformat,
+        exponentformat: xFormat.exponentformat,
       },
       yaxis: {
         title: settings.showAxisLabels
@@ -200,11 +299,11 @@ function GraphDisplay({
         tickfont: { color: isDark ? '#e8e8e8' : '#212529' },
         gridcolor: isDark ? '#3a3a5a' : '#e9ecef',
         zerolinecolor: isDark ? '#3a3a5a' : '#dee2e6',
-        tickformat: getTickFormat(settings.yAxisFormat),
-        exponentformat: settings.yAxisFormat === 'scientific' ? 'e' : 'none',
+        tickformat: yFormat.tickformat,
+        exponentformat: yFormat.exponentformat,
       },
       paper_bgcolor: 'transparent',
-      plot_bgcolor: 'transparent',
+      plot_bgcolor: bgColor,
       font: {
         family: 'Inter, sans-serif',
         color: isDark ? '#e8e8e8' : '#212529',

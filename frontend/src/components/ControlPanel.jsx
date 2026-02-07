@@ -3,6 +3,33 @@ import Plotly from 'plotly.js-dist-min';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
+const PRESET_COLORS = [
+  '#000000', '#ffffff', '#ff0000', '#00cc00', '#0000ff',
+  '#ff8800', '#8800cc', '#00aadd', '#ff00aa', '#888888',
+  '#ffdd00', '#00cc88',
+];
+
+const ColorSwatches = ({ value, onChange }) => (
+  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '4px' }}>
+    {PRESET_COLORS.map((color) => (
+      <button
+        key={color}
+        onClick={() => onChange(color)}
+        style={{
+          width: '18px',
+          height: '18px',
+          borderRadius: '3px',
+          border: value === color ? '2px solid var(--accent-color)' : '1px solid var(--border-color)',
+          backgroundColor: color,
+          cursor: 'pointer',
+          padding: 0,
+        }}
+        title={color}
+      />
+    ))}
+  </div>
+);
+
 function ControlPanel({
   data,
   settings,
@@ -12,6 +39,7 @@ function ControlPanel({
   allFiles,
   allSettings,
   theme,
+  onApplyToAll,
 }) {
   const [exportFormat, setExportFormat] = useState('png');
   const [isExporting, setIsExporting] = useState(false);
@@ -90,32 +118,41 @@ function ControlPanel({
         });
 
         // Create layout
-        const xAxisName = fileSettings.swapAxes
+        const defaultXName = fileSettings.swapAxes
           ? (fileData.y_data[0]?.name || 'Y')
           : fileData.x_name;
-        const yAxisName = fileSettings.swapAxes
+        const defaultYName = fileSettings.swapAxes
           ? fileData.x_name
           : (fileData.y_data.length === 1 ? fileData.y_data[0].name : 'Value');
+        const xAxisName = fileSettings.customXLabel || defaultXName;
+        const yAxisName = fileSettings.customYLabel || defaultYName;
 
-        const getTickFormat = (format) => {
+        const getAxisFormatConfig = (format) => {
           switch (format) {
-            case 'scientific': return '.2e';
-            default: return '';
+            case 'scientific': return { tickformat: '.2e', exponentformat: 'e' };
+            case 'exponential': return { tickformat: '', exponentformat: 'power' };
+            default: return { tickformat: '', exponentformat: 'none' };
           }
         };
+        const xFmt = getAxisFormatConfig(fileSettings.xAxisFormat);
+        const yFmt = getAxisFormatConfig(fileSettings.yAxisFormat);
+        const fileBgColor = fileSettings.bgColor || (isDark ? '#16213e' : '#ffffff');
+        const titleText = fileSettings.customTitle || fileData.title;
 
         const layout = {
-          title: fileSettings.showTitle ? { text: fileData.title } : null,
+          title: fileSettings.showTitle ? { text: titleText } : null,
           xaxis: {
             title: fileSettings.showAxisLabels ? { text: xAxisName } : null,
-            tickformat: getTickFormat(fileSettings.xAxisFormat),
+            tickformat: xFmt.tickformat,
+            exponentformat: xFmt.exponentformat,
           },
           yaxis: {
             title: fileSettings.showAxisLabels ? { text: yAxisName } : null,
-            tickformat: getTickFormat(fileSettings.yAxisFormat),
+            tickformat: yFmt.tickformat,
+            exponentformat: yFmt.exponentformat,
           },
           paper_bgcolor: isDark ? '#1a1a2e' : '#ffffff',
-          plot_bgcolor: isDark ? '#16213e' : '#ffffff',
+          plot_bgcolor: fileBgColor,
           font: { color: isDark ? '#e8e8e8' : '#212529' },
           showlegend: fileData.y_data.length > 1,
         };
@@ -173,12 +210,66 @@ function ControlPanel({
           />
         </div>
 
+        <div className="control-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.5rem' }}>
+          <label>Graph Title</label>
+          <input
+            type="text"
+            value={settings.customTitle || ''}
+            onChange={(e) => onUpdateSettings({ customTitle: e.target.value })}
+            placeholder={data.title}
+            style={{
+              padding: '0.5rem',
+              border: '1px solid var(--border-color)',
+              borderRadius: '4px',
+              backgroundColor: 'var(--bg-primary)',
+              color: 'var(--text-primary)',
+              fontSize: '0.875rem',
+            }}
+          />
+        </div>
+
         <div className="control-row">
           <label>Show Axis Labels</label>
           <input
             type="checkbox"
             checked={settings.showAxisLabels}
             onChange={(e) => onUpdateSettings({ showAxisLabels: e.target.checked })}
+          />
+        </div>
+
+        <div className="control-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.5rem' }}>
+          <label>X-Axis Label</label>
+          <input
+            type="text"
+            value={settings.customXLabel || ''}
+            onChange={(e) => onUpdateSettings({ customXLabel: e.target.value })}
+            placeholder={data.x_name || 'X'}
+            style={{
+              padding: '0.5rem',
+              border: '1px solid var(--border-color)',
+              borderRadius: '4px',
+              backgroundColor: 'var(--bg-primary)',
+              color: 'var(--text-primary)',
+              fontSize: '0.875rem',
+            }}
+          />
+        </div>
+
+        <div className="control-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.5rem' }}>
+          <label>Y-Axis Label</label>
+          <input
+            type="text"
+            value={settings.customYLabel || ''}
+            onChange={(e) => onUpdateSettings({ customYLabel: e.target.value })}
+            placeholder={data.y_data.length === 1 ? data.y_data[0].name : 'Value'}
+            style={{
+              padding: '0.5rem',
+              border: '1px solid var(--border-color)',
+              borderRadius: '4px',
+              backgroundColor: 'var(--bg-primary)',
+              color: 'var(--text-primary)',
+              fontSize: '0.875rem',
+            }}
           />
         </div>
 
@@ -189,6 +280,37 @@ function ControlPanel({
             checked={settings.swapAxes}
             onChange={(e) => onUpdateSettings({ swapAxes: e.target.checked })}
           />
+        </div>
+
+        <div className="control-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <label>Background Color</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <input
+                type="color"
+                value={settings.bgColor || '#ffffff'}
+                onChange={(e) => onUpdateSettings({ bgColor: e.target.value })}
+              />
+              {settings.bgColor && (
+                <button
+                  onClick={() => onUpdateSettings({ bgColor: '' })}
+                  style={{
+                    padding: '0.125rem 0.375rem',
+                    fontSize: '0.75rem',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '4px',
+                    backgroundColor: 'var(--bg-tertiary)',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                  }}
+                  title="Reset to default"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+          <ColorSwatches value={settings.bgColor} onChange={(c) => onUpdateSettings({ bgColor: c })} />
         </div>
       </div>
 
@@ -204,6 +326,7 @@ function ControlPanel({
           >
             <option value="normal">Normal</option>
             <option value="scientific">Scientific</option>
+            <option value="exponential">Exponential (10^x)</option>
           </select>
         </div>
 
@@ -215,6 +338,7 @@ function ControlPanel({
           >
             <option value="normal">Normal</option>
             <option value="scientific">Scientific</option>
+            <option value="exponential">Exponential (10^x)</option>
           </select>
         </div>
       </div>
@@ -248,13 +372,16 @@ function ControlPanel({
                 </div>
               </div>
 
-              <div className="control-row">
-                <label>Color</label>
-                <input
-                  type="color"
-                  value={curveSettings.color}
-                  onChange={(e) => onUpdateCurve(idx, { color: e.target.value })}
-                />
+              <div className="control-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <label>Color</label>
+                  <input
+                    type="color"
+                    value={curveSettings.color}
+                    onChange={(e) => onUpdateCurve(idx, { color: e.target.value })}
+                  />
+                </div>
+                <ColorSwatches value={curveSettings.color} onChange={(c) => onUpdateCurve(idx, { color: c })} />
               </div>
 
               <div className="control-row">
@@ -274,6 +401,25 @@ function ControlPanel({
           );
         })}
       </div>
+
+      {/* Save for All */}
+      {allFiles && allFiles.length > 1 && (
+        <div className="control-section">
+          <button
+            className="export-btn"
+            onClick={onApplyToAll}
+            style={{
+              width: '100%',
+              backgroundColor: 'var(--accent-color)',
+            }}
+          >
+            Save for All ({allFiles.length} graphs)
+          </button>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.375rem' }}>
+            Apply current design settings to all graphs
+          </p>
+        </div>
+      )}
 
       {/* Zoom Instructions */}
       <div className="control-section">

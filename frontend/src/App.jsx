@@ -16,8 +16,12 @@ const getDefaultSettings = () => ({
   showTitle: true,
   showAxisLabels: true,
   swapAxes: false,
-  xAxisFormat: 'normal', // 'normal' or 'scientific'
+  customTitle: '',
+  customXLabel: '',
+  customYLabel: '',
+  xAxisFormat: 'exponential', // 'normal', 'scientific', or 'exponential'
   yAxisFormat: 'normal',
+  bgColor: '', // empty means transparent/default
   curves: [], // Will be populated with curve-specific settings
 });
 
@@ -45,8 +49,12 @@ function App() {
     showTitle: true,
     showAxisLabels: true,
     customTitle: '',
-    xAxisFormat: 'normal',
+    customXLabel: '',
+    customYLabel: '',
+    xAxisFormat: 'exponential',
     yAxisFormat: 'normal',
+    bgColor: '',
+    compareLayout: 'overlay', // 'overlay' or 'sequential'
   });
   const [compareCurveSettings, setCompareCurveSettings] = useState({});
 
@@ -260,6 +268,39 @@ function App() {
     });
   }, [currentIndex]);
 
+  // Apply current graph's design settings to all other graphs
+  const applySettingsToAll = useCallback(() => {
+    const source = graphSettings[currentIndex];
+    if (!source) return;
+
+    setGraphSettings((prev) => {
+      const updated = { ...prev };
+      for (let i = 0; i < files.length; i++) {
+        if (i === currentIndex) continue;
+        const targetFile = files[i];
+        // Copy display settings and formats, but adapt curves to target file's curve count
+        const targetCurves = targetFile.y_data.map((_, curveIdx) => {
+          const sourceCurve = source.curves[curveIdx % source.curves.length];
+          return {
+            ...(updated[i]?.curves?.[curveIdx] || {}),
+            color: sourceCurve?.color || '#1f77b4',
+            width: sourceCurve?.width || 2,
+          };
+        });
+        updated[i] = {
+          ...updated[i],
+          showTitle: source.showTitle,
+          showAxisLabels: source.showAxisLabels,
+          xAxisFormat: source.xAxisFormat,
+          yAxisFormat: source.yAxisFormat,
+          bgColor: source.bgColor,
+          curves: targetCurves,
+        };
+      }
+      return updated;
+    });
+  }, [currentIndex, graphSettings, files]);
+
   // File colors for compare mode - each file gets a distinct base color
   const fileColors = [
     '#1f77b4', // Blue
@@ -316,8 +357,12 @@ function App() {
       showTitle: true,
       showAxisLabels: true,
       customTitle: '',
-      xAxisFormat: 'normal',
+      customXLabel: '',
+      customYLabel: '',
+      xAxisFormat: 'exponential',
       yAxisFormat: 'normal',
+      bgColor: '',
+      compareLayout: 'overlay',
     });
   }, []);
 
@@ -481,6 +526,7 @@ function App() {
                   allFiles={files}
                   allSettings={graphSettings}
                   theme={theme}
+                  onApplyToAll={applySettingsToAll}
                 />
               )}
             </div>
