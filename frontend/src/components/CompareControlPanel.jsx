@@ -125,6 +125,15 @@ function CompareControlPanel({
         </div>
 
         <div className="control-row">
+          <label>X Start from 0</label>
+          <input
+            type="checkbox"
+            checked={compareSettings.normalizeX || false}
+            onChange={(e) => onUpdateSettings({ normalizeX: e.target.checked })}
+          />
+        </div>
+
+        <div className="control-row">
           <label>Layout</label>
           <select
             value={compareSettings.compareLayout || 'overlay'}

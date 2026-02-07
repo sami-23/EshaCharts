@@ -15,15 +15,23 @@ function GraphDisplay({
 }) {
   const plotRef = useRef(null);
 
+  // Helper to normalize x-data to start from 0
+  const normalizeXData = (xData) => {
+    const numericX = xData.map((v) => (typeof v === 'number' ? v : parseFloat(v) || 0));
+    const xMin = Math.min(...numericX);
+    return numericX.map((v) => v - xMin);
+  };
+
   // Generate plot traces
   const traces = useMemo(() => {
     // Compare mode: generate traces from all files
     if (isCompareMode && compareData && compareCurveSettings) {
       const allTraces = [];
       const isSequential = compareSettings?.compareLayout === 'sequential';
+      const shouldNormalize = compareSettings?.normalizeX;
 
       if (isSequential) {
-        // Sequential mode: offset each file's x-data so they appear one after another
+        // Sequential mode: place each file's data one after another (no gap)
         let xOffset = 0;
 
         compareData.forEach((fileData, fileIdx) => {
@@ -58,13 +66,14 @@ function GraphDisplay({
             });
           });
 
-          // Add gap between files
-          xOffset += xRange + xRange * 0.05;
+          // No gap - files are placed directly adjacent
+          xOffset += xRange;
         });
       } else {
         // Overlay mode: all files share the same x-axis
         compareData.forEach((fileData, fileIdx) => {
           const fileName = fileData.filename || fileData.title || `File ${fileIdx + 1}`;
+          const xData = shouldNormalize ? normalizeXData(fileData.x_data) : fileData.x_data;
 
           fileData.y_data.forEach((yData, curveIdx) => {
             const curveKey = `${fileData._compareFileIndex}-${curveIdx}`;
@@ -75,7 +84,7 @@ function GraphDisplay({
             };
 
             allTraces.push({
-              x: fileData.x_data,
+              x: xData,
               y: yData.data,
               type: 'scatter',
               mode: 'lines',
@@ -105,8 +114,13 @@ function GraphDisplay({
       };
 
       // Handle axis swap
-      const xValues = settings.swapAxes ? yData.data : data.x_data;
+      let xValues = settings.swapAxes ? yData.data : data.x_data;
       const yValues = settings.swapAxes ? data.x_data : yData.data;
+
+      // Normalize X to start from 0 if enabled
+      if (settings.normalizeX) {
+        xValues = normalizeXData(xValues);
+      }
 
       return {
         x: xValues,
@@ -122,7 +136,7 @@ function GraphDisplay({
         hovertemplate: '%{x}<br>%{y}<extra></extra>',
       };
     });
-  }, [data, settings, isCompareMode, compareData, compareCurveSettings]);
+  }, [data, settings, isCompareMode, compareData, compareCurveSettings, compareSettings]);
 
   // Generate layout
   const layout = useMemo(() => {
@@ -132,12 +146,12 @@ function GraphDisplay({
     const getAxisFormatConfig = (format) => {
       switch (format) {
         case 'scientific':
-          return { tickformat: '.2e', exponentformat: 'e', type: undefined };
+          return { tickformat: '.2e', exponentformat: 'e', minexponent: 0 };
         case 'exponential':
-          return { tickformat: '', exponentformat: 'power', type: undefined };
+          return { tickformat: '', exponentformat: 'power', minexponent: 0 };
         case 'normal':
         default:
-          return { tickformat: '', exponentformat: 'none', type: undefined };
+          return { tickformat: '', exponentformat: 'none', minexponent: 3 };
       }
     };
 
@@ -179,8 +193,8 @@ function GraphDisplay({
           if (fileIdx > 0) {
             shapes.push({
               type: 'line',
-              x0: segStart - xRange * 0.025,
-              x1: segStart - xRange * 0.025,
+              x0: segStart,
+              x1: segStart,
               y0: 0,
               y1: 1,
               yref: 'paper',
@@ -188,7 +202,8 @@ function GraphDisplay({
             });
           }
 
-          xOffset += xRange + xRange * 0.05;
+          // No gap between files
+          xOffset += xRange;
         });
       }
 
@@ -214,6 +229,7 @@ function GraphDisplay({
           zerolinecolor: isDark ? '#3a3a5a' : '#dee2e6',
           tickformat: xFormat.tickformat,
           exponentformat: xFormat.exponentformat,
+          minexponent: xFormat.minexponent,
         },
         yaxis: {
           title: compareSettings.showAxisLabels
@@ -227,6 +243,7 @@ function GraphDisplay({
           zerolinecolor: isDark ? '#3a3a5a' : '#dee2e6',
           tickformat: yFormat.tickformat,
           exponentformat: yFormat.exponentformat,
+          minexponent: yFormat.minexponent,
         },
         paper_bgcolor: 'transparent',
         plot_bgcolor: bgColor,
@@ -288,6 +305,7 @@ function GraphDisplay({
         zerolinecolor: isDark ? '#3a3a5a' : '#dee2e6',
         tickformat: xFormat.tickformat,
         exponentformat: xFormat.exponentformat,
+        minexponent: xFormat.minexponent,
       },
       yaxis: {
         title: settings.showAxisLabels
@@ -301,6 +319,7 @@ function GraphDisplay({
         zerolinecolor: isDark ? '#3a3a5a' : '#dee2e6',
         tickformat: yFormat.tickformat,
         exponentformat: yFormat.exponentformat,
+        minexponent: yFormat.minexponent,
       },
       paper_bgcolor: 'transparent',
       plot_bgcolor: bgColor,

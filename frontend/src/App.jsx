@@ -20,7 +20,8 @@ const getDefaultSettings = () => ({
   customXLabel: '',
   customYLabel: '',
   xAxisFormat: 'exponential', // 'normal', 'scientific', or 'exponential'
-  yAxisFormat: 'normal',
+  yAxisFormat: 'exponential',
+  normalizeX: false, // subtract min x so axis starts from 0
   bgColor: '', // empty means transparent/default
   curves: [], // Will be populated with curve-specific settings
 });
@@ -52,7 +53,8 @@ function App() {
     customXLabel: '',
     customYLabel: '',
     xAxisFormat: 'exponential',
-    yAxisFormat: 'normal',
+    yAxisFormat: 'exponential',
+    normalizeX: false,
     bgColor: '',
     compareLayout: 'overlay', // 'overlay' or 'sequential'
   });
@@ -360,7 +362,8 @@ function App() {
       customXLabel: '',
       customYLabel: '',
       xAxisFormat: 'exponential',
-      yAxisFormat: 'normal',
+      yAxisFormat: 'exponential',
+      normalizeX: false,
       bgColor: '',
       compareLayout: 'overlay',
     });

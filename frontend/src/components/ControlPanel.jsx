@@ -95,6 +95,13 @@ function ControlPanel({
           })),
         };
 
+        // Helper to normalize x-data to start from 0
+        const normalizeXData = (xArr) => {
+          const nums = xArr.map((v) => (typeof v === 'number' ? v : parseFloat(v) || 0));
+          const min = Math.min(...nums);
+          return nums.map((v) => v - min);
+        };
+
         // Create traces
         const traces = fileData.y_data.map((yData, idx) => {
           const curveSettings = fileSettings.curves[idx] || {
@@ -103,8 +110,13 @@ function ControlPanel({
             width: 2,
           };
 
+          let xVals = fileSettings.swapAxes ? yData.data : fileData.x_data;
+          if (fileSettings.normalizeX) {
+            xVals = normalizeXData(xVals);
+          }
+
           return {
-            x: fileSettings.swapAxes ? yData.data : fileData.x_data,
+            x: xVals,
             y: fileSettings.swapAxes ? fileData.x_data : yData.data,
             type: 'scatter',
             mode: 'lines',
@@ -129,9 +141,9 @@ function ControlPanel({
 
         const getAxisFormatConfig = (format) => {
           switch (format) {
-            case 'scientific': return { tickformat: '.2e', exponentformat: 'e' };
-            case 'exponential': return { tickformat: '', exponentformat: 'power' };
-            default: return { tickformat: '', exponentformat: 'none' };
+            case 'scientific': return { tickformat: '.2e', exponentformat: 'e', minexponent: 0 };
+            case 'exponential': return { tickformat: '', exponentformat: 'power', minexponent: 0 };
+            default: return { tickformat: '', exponentformat: 'none', minexponent: 3 };
           }
         };
         const xFmt = getAxisFormatConfig(fileSettings.xAxisFormat);
@@ -145,11 +157,13 @@ function ControlPanel({
             title: fileSettings.showAxisLabels ? { text: xAxisName } : null,
             tickformat: xFmt.tickformat,
             exponentformat: xFmt.exponentformat,
+            minexponent: xFmt.minexponent,
           },
           yaxis: {
             title: fileSettings.showAxisLabels ? { text: yAxisName } : null,
             tickformat: yFmt.tickformat,
             exponentformat: yFmt.exponentformat,
+            minexponent: yFmt.minexponent,
           },
           paper_bgcolor: isDark ? '#1a1a2e' : '#ffffff',
           plot_bgcolor: fileBgColor,
@@ -279,6 +293,15 @@ function ControlPanel({
             type="checkbox"
             checked={settings.swapAxes}
             onChange={(e) => onUpdateSettings({ swapAxes: e.target.checked })}
+          />
+        </div>
+
+        <div className="control-row">
+          <label>X Start from 0</label>
+          <input
+            type="checkbox"
+            checked={settings.normalizeX || false}
+            onChange={(e) => onUpdateSettings({ normalizeX: e.target.checked })}
           />
         </div>
 
