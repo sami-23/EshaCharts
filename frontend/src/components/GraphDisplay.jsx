@@ -22,6 +22,11 @@ function GraphDisplay({
     return numericX.map((v) => v - xMin);
   };
 
+  // Helper to invert y-data (negate all values)
+  const invertYData = (yData) => {
+    return yData.map((v) => (typeof v === 'number' ? -v : -(parseFloat(v) || 0)));
+  };
+
   // Generate plot traces
   const traces = useMemo(() => {
     // Compare mode: generate traces from all files
@@ -29,6 +34,7 @@ function GraphDisplay({
       const allTraces = [];
       const isSequential = compareSettings?.compareLayout === 'sequential';
       const shouldNormalize = compareSettings?.normalizeX;
+      const shouldInvert = compareSettings?.invertData;
 
       if (isSequential) {
         // Sequential mode: place each file's data one after another (no gap)
@@ -50,10 +56,11 @@ function GraphDisplay({
             };
 
             const offsetXData = xData.map((v) => v - xMin + xOffset);
+            const yValues = shouldInvert ? invertYData(yData.data) : yData.data;
 
             allTraces.push({
               x: offsetXData,
-              y: yData.data,
+              y: yValues,
               type: 'scatter',
               mode: 'lines',
               name: `${fileName} - ${yData.name}`,
@@ -83,9 +90,11 @@ function GraphDisplay({
               width: 2,
             };
 
+            const yValues = shouldInvert ? invertYData(yData.data) : yData.data;
+
             allTraces.push({
               x: xData,
-              y: yData.data,
+              y: yValues,
               type: 'scatter',
               mode: 'lines',
               name: `${fileName} - ${yData.name}`,
@@ -115,11 +124,16 @@ function GraphDisplay({
 
       // Handle axis swap
       let xValues = settings.swapAxes ? yData.data : data.x_data;
-      const yValues = settings.swapAxes ? data.x_data : yData.data;
+      let yValues = settings.swapAxes ? data.x_data : yData.data;
 
       // Normalize X to start from 0 if enabled
       if (settings.normalizeX) {
         xValues = normalizeXData(xValues);
+      }
+
+      // Invert Y data if enabled
+      if (settings.invertData) {
+        yValues = invertYData(yValues);
       }
 
       return {

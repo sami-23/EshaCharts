@@ -22,6 +22,7 @@ const getDefaultSettings = () => ({
   xAxisFormat: 'exponential', // 'normal', 'scientific', or 'exponential'
   yAxisFormat: 'exponential',
   normalizeX: false, // subtract min x so axis starts from 0
+  invertData: false, // negate all y values
   bgColor: '', // empty means transparent/default
   curves: [], // Will be populated with curve-specific settings
 });
@@ -55,6 +56,7 @@ function App() {
     xAxisFormat: 'exponential',
     yAxisFormat: 'exponential',
     normalizeX: false,
+    invertData: false,
     bgColor: '',
     compareLayout: 'overlay', // 'overlay' or 'sequential'
   });
@@ -364,6 +366,7 @@ function App() {
       xAxisFormat: 'exponential',
       yAxisFormat: 'exponential',
       normalizeX: false,
+      invertData: false,
       bgColor: '',
       compareLayout: 'overlay',
     });

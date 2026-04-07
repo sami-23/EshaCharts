@@ -102,6 +102,11 @@ function ControlPanel({
           return nums.map((v) => v - min);
         };
 
+        // Helper to invert y-data
+        const invertYData = (yArr) => {
+          return yArr.map((v) => (typeof v === 'number' ? -v : -(parseFloat(v) || 0)));
+        };
+
         // Create traces
         const traces = fileData.y_data.map((yData, idx) => {
           const curveSettings = fileSettings.curves[idx] || {
@@ -115,9 +120,14 @@ function ControlPanel({
             xVals = normalizeXData(xVals);
           }
 
+          let yVals = fileSettings.swapAxes ? fileData.x_data : yData.data;
+          if (fileSettings.invertData) {
+            yVals = invertYData(yVals);
+          }
+
           return {
             x: xVals,
-            y: fileSettings.swapAxes ? fileData.x_data : yData.data,
+            y: yVals,
             type: 'scatter',
             mode: 'lines',
             name: yData.name,
@@ -302,6 +312,15 @@ function ControlPanel({
             type="checkbox"
             checked={settings.normalizeX || false}
             onChange={(e) => onUpdateSettings({ normalizeX: e.target.checked })}
+          />
+        </div>
+
+        <div className="control-row">
+          <label>Invert Data</label>
+          <input
+            type="checkbox"
+            checked={settings.invertData || false}
+            onChange={(e) => onUpdateSettings({ invertData: e.target.checked })}
           />
         </div>
 

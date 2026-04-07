@@ -134,6 +134,15 @@ function CompareControlPanel({
         </div>
 
         <div className="control-row">
+          <label>Invert Data</label>
+          <input
+            type="checkbox"
+            checked={compareSettings.invertData || false}
+            onChange={(e) => onUpdateSettings({ invertData: e.target.checked })}
+          />
+        </div>
+
+        <div className="control-row">
           <label>Layout</label>
           <select
             value={compareSettings.compareLayout || 'overlay'}
