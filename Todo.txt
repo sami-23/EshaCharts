@@ -1,0 +1,22 @@
+==================================================
+EshaCharts Feature Todo List
+==================================================
+
+[DONE] Add "Invert Data" checkbox in single and multi view
+[DONE] Chart type selector per curve (Line, Bar, Scatter, Area, Step)
+[DONE] Grid toggle (show/hide grid lines)
+[DONE] Log scale option for X/Y axes
+[DONE] Math operations on curves (multiply, offset, derivative, integral)
+[DONE] Smoothing/filtering (moving average)
+[DONE] Peak detection (auto-mark local maxima/minima)
+[DONE] Cursor/crosshair (unified X hover mode)
+[DONE] Undo/redo for settings changes
+[DONE] Preset themes - save and load graph style configurations
+[DONE] Copy graph to clipboard as image
+[DONE] CSV export of modified/inverted data
+
+--------------------------------------------------
+DEFERRED (Future)
+--------------------------------------------------
+[ ] Drag-and-drop curve reordering (requires drag-drop library)
+[ ] Shareable link - generate URL with encoded graph state (requires backend support)

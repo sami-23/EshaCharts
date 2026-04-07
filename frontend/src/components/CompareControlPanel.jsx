@@ -38,6 +38,25 @@ function CompareControlPanel({
 }) {
   const [exportFormat, setExportFormat] = useState('png');
   const [isExporting, setIsExporting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Copy graph to clipboard as PNG
+  const copyToClipboard = useCallback(async () => {
+    const plotDiv = window.currentPlotDiv;
+    if (!plotDiv) return;
+
+    try {
+      const dataUrl = await Plotly.toImage(plotDiv, { format: 'png', height: 800, width: 1200, scale: 2 });
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Copy to clipboard failed:', err);
+      alert('Copy to clipboard failed. Your browser may not support this feature.');
+    }
+  }, []);
 
   // Group curves by source file
   const curvesByFile = useMemo(() => {
@@ -139,6 +158,42 @@ function CompareControlPanel({
             type="checkbox"
             checked={compareSettings.invertData || false}
             onChange={(e) => onUpdateSettings({ invertData: e.target.checked })}
+          />
+        </div>
+
+        <div className="control-row">
+          <label>Show Grid</label>
+          <input
+            type="checkbox"
+            checked={compareSettings.showGrid !== false}
+            onChange={(e) => onUpdateSettings({ showGrid: e.target.checked })}
+          />
+        </div>
+
+        <div className="control-row">
+          <label>Log Scale X</label>
+          <input
+            type="checkbox"
+            checked={compareSettings.logScaleX || false}
+            onChange={(e) => onUpdateSettings({ logScaleX: e.target.checked })}
+          />
+        </div>
+
+        <div className="control-row">
+          <label>Log Scale Y</label>
+          <input
+            type="checkbox"
+            checked={compareSettings.logScaleY || false}
+            onChange={(e) => onUpdateSettings({ logScaleY: e.target.checked })}
+          />
+        </div>
+
+        <div className="control-row">
+          <label>Crosshair</label>
+          <input
+            type="checkbox"
+            checked={compareSettings.crosshair || false}
+            onChange={(e) => onUpdateSettings({ crosshair: e.target.checked })}
           />
         </div>
 
@@ -296,6 +351,20 @@ function CompareControlPanel({
                   </div>
                 </div>
 
+                <div className="control-row">
+                  <label>Type</label>
+                  <select
+                    value={settings.chartType || 'line'}
+                    onChange={(e) => onUpdateCurve(curveKey, { chartType: e.target.value })}
+                  >
+                    <option value="line">Line</option>
+                    <option value="bar">Bar</option>
+                    <option value="scatter">Scatter</option>
+                    <option value="area">Area</option>
+                    <option value="step">Step</option>
+                  </select>
+                </div>
+
                 <div className="control-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.25rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <label>Color</label>
@@ -319,6 +388,80 @@ function CompareControlPanel({
                     onChange={(e) =>
                       onUpdateCurve(curveKey, { width: parseFloat(e.target.value) })
                     }
+                  />
+                </div>
+
+                <div className="control-row">
+                  <label>Multiply</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={settings.multiply ?? 1}
+                    onChange={(e) => onUpdateCurve(curveKey, { multiply: parseFloat(e.target.value) || 1 })}
+                    style={{
+                      width: '70px',
+                      padding: '0.25rem',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '4px',
+                      backgroundColor: 'var(--bg-primary)',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.8rem',
+                    }}
+                  />
+                </div>
+
+                <div className="control-row">
+                  <label>Offset</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={settings.offset ?? 0}
+                    onChange={(e) => onUpdateCurve(curveKey, { offset: parseFloat(e.target.value) || 0 })}
+                    style={{
+                      width: '70px',
+                      padding: '0.25rem',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '4px',
+                      backgroundColor: 'var(--bg-primary)',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.8rem',
+                    }}
+                  />
+                </div>
+
+                <div className="control-row">
+                  <label>Transform</label>
+                  <select
+                    value={settings.transform || 'none'}
+                    onChange={(e) => onUpdateCurve(curveKey, { transform: e.target.value })}
+                  >
+                    <option value="none">None</option>
+                    <option value="derivative">Derivative</option>
+                    <option value="integral">Integral</option>
+                  </select>
+                </div>
+
+                <div className="control-row">
+                  <label>Smooth ({settings.smoothing || 0})</label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="50"
+                    step="1"
+                    value={settings.smoothing || 0}
+                    onChange={(e) =>
+                      onUpdateCurve(curveKey, { smoothing: parseInt(e.target.value) })
+                    }
+                  />
+                </div>
+
+                <div className="control-row">
+                  <label>Peaks</label>
+                  <input
+                    type="checkbox"
+                    checked={settings.showPeaks || false}
+                    onChange={(e) => onUpdateCurve(curveKey, { showPeaks: e.target.checked })}
+                    title="Show peaks and valleys"
                   />
                 </div>
               </div>
@@ -370,6 +513,14 @@ function CompareControlPanel({
             disabled={isExporting}
           >
             {isExporting ? 'Exporting...' : 'Export Comparison'}
+          </button>
+
+          <button
+            className="export-btn secondary"
+            onClick={copyToClipboard}
+            style={{ marginTop: '0.5rem' }}
+          >
+            {copied ? 'Copied!' : 'Copy to Clipboard'}
           </button>
         </div>
       </div>

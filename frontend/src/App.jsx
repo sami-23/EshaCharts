@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import FileUpload from './components/FileUpload';
 import GraphDisplay from './components/GraphDisplay';
 import ControlPanel from './components/ControlPanel';
@@ -23,6 +23,10 @@ const getDefaultSettings = () => ({
   yAxisFormat: 'exponential',
   normalizeX: false, // subtract min x so axis starts from 0
   invertData: false, // negate all y values
+  showGrid: true, // show grid lines
+  logScaleX: false, // logarithmic X axis
+  logScaleY: false, // logarithmic Y axis
+  crosshair: false, // unified crosshair hover mode
   bgColor: '', // empty means transparent/default
   curves: [], // Will be populated with curve-specific settings
 });
@@ -33,6 +37,8 @@ function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentData, setCurrentData] = useState(null);
   const [graphSettings, setGraphSettings] = useState({}); // Per-file settings
+  const settingsHistory = useRef([]); // undo stack
+  const settingsFuture = useRef([]); // redo stack
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [theme, setTheme] = useState('light'); // 'light' or 'dark'
@@ -57,6 +63,10 @@ function App() {
     yAxisFormat: 'exponential',
     normalizeX: false,
     invertData: false,
+    showGrid: true,
+    logScaleX: false,
+    logScaleY: false,
+    crosshair: false,
     bgColor: '',
     compareLayout: 'overlay', // 'overlay' or 'sequential'
   });
@@ -74,6 +84,12 @@ function App() {
       visible: true,
       color: defaultColors[idx % defaultColors.length],
       width: 2,
+      chartType: 'line', // 'line', 'bar', 'scatter', 'area', 'step'
+      multiply: 1,
+      offset: 0,
+      transform: 'none', // 'none', 'derivative', 'integral'
+      smoothing: 0, // moving average window size, 0 = off
+      showPeaks: false,
     }));
   }, []);
 
@@ -244,8 +260,19 @@ function App() {
     }
   }, [sessionId, files, graphSettings, initializeCurveSettings]);
 
+  // Push current settings to undo stack
+  const pushToHistory = useCallback(() => {
+    setGraphSettings((prev) => {
+      settingsHistory.current.push(JSON.stringify(prev));
+      if (settingsHistory.current.length > 50) settingsHistory.current.shift();
+      settingsFuture.current = [];
+      return prev;
+    });
+  }, []);
+
   // Update settings for current graph
   const updateSettings = useCallback((updates) => {
+    pushToHistory();
     setGraphSettings((prev) => ({
       ...prev,
       [currentIndex]: {
@@ -253,10 +280,11 @@ function App() {
         ...updates,
       },
     }));
-  }, [currentIndex]);
+  }, [currentIndex, pushToHistory]);
 
   // Update specific curve settings
   const updateCurveSettings = useCallback((curveIndex, updates) => {
+    pushToHistory();
     setGraphSettings((prev) => {
       const currentSettings = prev[currentIndex];
       const newCurves = [...currentSettings.curves];
@@ -270,7 +298,28 @@ function App() {
         },
       };
     });
-  }, [currentIndex]);
+  }, [currentIndex, pushToHistory]);
+
+  // Undo
+  const undo = useCallback(() => {
+    if (settingsHistory.current.length === 0) return;
+    setGraphSettings((prev) => {
+      settingsFuture.current.push(JSON.stringify(prev));
+      return JSON.parse(settingsHistory.current.pop());
+    });
+  }, []);
+
+  // Redo
+  const redo = useCallback(() => {
+    if (settingsFuture.current.length === 0) return;
+    setGraphSettings((prev) => {
+      settingsHistory.current.push(JSON.stringify(prev));
+      return JSON.parse(settingsFuture.current.pop());
+    });
+  }, []);
+
+  const canUndo = settingsHistory.current.length > 0;
+  const canRedo = settingsFuture.current.length > 0;
 
   // Apply current graph's design settings to all other graphs
   const applySettingsToAll = useCallback(() => {
@@ -340,6 +389,12 @@ function App() {
           visible: true,
           color: baseColor,
           width: 2,
+          chartType: 'line',
+          multiply: 1,
+          offset: 0,
+          transform: 'none',
+          smoothing: 0,
+          showPeaks: false,
           name: curve.name,
           fileName: file.filename || file.title,
         };
@@ -367,6 +422,10 @@ function App() {
       yAxisFormat: 'exponential',
       normalizeX: false,
       invertData: false,
+      showGrid: true,
+      logScaleX: false,
+      logScaleY: false,
+      crosshair: false,
       bgColor: '',
       compareLayout: 'overlay',
     });
@@ -533,6 +592,10 @@ function App() {
                   allSettings={graphSettings}
                   theme={theme}
                   onApplyToAll={applySettingsToAll}
+                  onUndo={undo}
+                  onRedo={redo}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
                 />
               )}
             </div>

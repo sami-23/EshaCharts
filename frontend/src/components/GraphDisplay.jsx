@@ -27,6 +27,93 @@ function GraphDisplay({
     return yData.map((v) => (typeof v === 'number' ? -v : -(parseFloat(v) || 0)));
   };
 
+  // Helper to apply per-curve math transformations
+  const applyTransforms = (yData, xData, curveSettings) => {
+    let y = yData.map((v) => (typeof v === 'number' ? v : parseFloat(v) || 0));
+    const x = xData.map((v) => (typeof v === 'number' ? v : parseFloat(v) || 0));
+
+    // Apply smoothing (moving average) first
+    const window = curveSettings.smoothing || 0;
+    if (window > 1) {
+      const smoothed = [];
+      for (let i = 0; i < y.length; i++) {
+        const start = Math.max(0, i - Math.floor(window / 2));
+        const end = Math.min(y.length, i + Math.ceil(window / 2));
+        let sum = 0;
+        for (let j = start; j < end; j++) sum += y[j];
+        smoothed.push(sum / (end - start));
+      }
+      y = smoothed;
+    }
+
+    // Apply transform (derivative or integral)
+    const transform = curveSettings.transform || 'none';
+    if (transform === 'derivative') {
+      const dy = [];
+      for (let i = 0; i < y.length; i++) {
+        if (i === 0) {
+          dy.push((y[1] - y[0]) / ((x[1] - x[0]) || 1));
+        } else if (i === y.length - 1) {
+          dy.push((y[i] - y[i - 1]) / ((x[i] - x[i - 1]) || 1));
+        } else {
+          dy.push((y[i + 1] - y[i - 1]) / ((x[i + 1] - x[i - 1]) || 1));
+        }
+      }
+      y = dy;
+    } else if (transform === 'integral') {
+      const integral = [0];
+      for (let i = 1; i < y.length; i++) {
+        const dx = x[i] - x[i - 1];
+        integral.push(integral[i - 1] + (y[i] + y[i - 1]) * 0.5 * dx);
+      }
+      y = integral;
+    }
+
+    // Apply multiply and offset
+    const mult = curveSettings.multiply ?? 1;
+    const off = curveSettings.offset ?? 0;
+    if (mult !== 1 || off !== 0) {
+      y = y.map((v) => v * mult + off);
+    }
+
+    return y;
+  };
+
+  // Helper to detect peaks (local maxima) and valleys (local minima)
+  const detectPeaks = (xData, yData) => {
+    const peaks = { x: [], y: [], labels: [] };
+    const valleys = { x: [], y: [], labels: [] };
+    const y = yData.map((v) => (typeof v === 'number' ? v : parseFloat(v) || 0));
+
+    for (let i = 1; i < y.length - 1; i++) {
+      if (y[i] > y[i - 1] && y[i] > y[i + 1]) {
+        peaks.x.push(xData[i]);
+        peaks.y.push(y[i]);
+      } else if (y[i] < y[i - 1] && y[i] < y[i + 1]) {
+        valleys.x.push(xData[i]);
+        valleys.y.push(y[i]);
+      }
+    }
+    return { peaks, valleys };
+  };
+
+  // Helper to get Plotly trace properties from chart type
+  const getChartTypeProps = (chartType, color, width) => {
+    switch (chartType) {
+      case 'bar':
+        return { type: 'bar', marker: { color } };
+      case 'scatter':
+        return { type: 'scatter', mode: 'markers', marker: { color, size: width * 3 }, line: undefined };
+      case 'area':
+        return { type: 'scatter', mode: 'lines', fill: 'tozeroy', line: { color, width } };
+      case 'step':
+        return { type: 'scatter', mode: 'lines', line: { color, width, shape: 'hv' } };
+      case 'line':
+      default:
+        return { type: 'scatter', mode: 'lines', line: { color, width } };
+    }
+  };
+
   // Generate plot traces
   const traces = useMemo(() => {
     // Compare mode: generate traces from all files
@@ -56,21 +143,40 @@ function GraphDisplay({
             };
 
             const offsetXData = xData.map((v) => v - xMin + xOffset);
-            const yValues = shouldInvert ? invertYData(yData.data) : yData.data;
+            let yValues = applyTransforms(yData.data, xData, curveSettings);
+            if (shouldInvert) yValues = invertYData(yValues);
+            const typeProps = getChartTypeProps(curveSettings.chartType, curveSettings.color, curveSettings.width);
 
             allTraces.push({
               x: offsetXData,
               y: yValues,
-              type: 'scatter',
-              mode: 'lines',
+              ...typeProps,
               name: `${fileName} - ${yData.name}`,
               visible: curveSettings.visible ? true : 'legendonly',
-              line: {
-                color: curveSettings.color,
-                width: curveSettings.width,
-              },
               hovertemplate: `${fileName}<br>${yData.name}<br>%{x}<br>%{y}<extra></extra>`,
             });
+
+            if (curveSettings.showPeaks) {
+              const { peaks, valleys } = detectPeaks(offsetXData, yValues);
+              if (peaks.x.length > 0) {
+                allTraces.push({
+                  x: peaks.x, y: peaks.y, type: 'scatter', mode: 'markers',
+                  name: `${fileName} - ${yData.name} peaks`,
+                  marker: { color: '#ff0000', size: 8, symbol: 'triangle-up' },
+                  visible: curveSettings.visible ? true : 'legendonly',
+                  showlegend: false, hovertemplate: 'Peak<br>%{x}<br>%{y}<extra></extra>',
+                });
+              }
+              if (valleys.x.length > 0) {
+                allTraces.push({
+                  x: valleys.x, y: valleys.y, type: 'scatter', mode: 'markers',
+                  name: `${fileName} - ${yData.name} valleys`,
+                  marker: { color: '#0000ff', size: 8, symbol: 'triangle-down' },
+                  visible: curveSettings.visible ? true : 'legendonly',
+                  showlegend: false, hovertemplate: 'Valley<br>%{x}<br>%{y}<extra></extra>',
+                });
+              }
+            }
           });
 
           // No gap - files are placed directly adjacent
@@ -90,21 +196,40 @@ function GraphDisplay({
               width: 2,
             };
 
-            const yValues = shouldInvert ? invertYData(yData.data) : yData.data;
+            let yValues = applyTransforms(yData.data, fileData.x_data, curveSettings);
+            if (shouldInvert) yValues = invertYData(yValues);
+            const typeProps = getChartTypeProps(curveSettings.chartType, curveSettings.color, curveSettings.width);
 
             allTraces.push({
               x: xData,
               y: yValues,
-              type: 'scatter',
-              mode: 'lines',
+              ...typeProps,
               name: `${fileName} - ${yData.name}`,
               visible: curveSettings.visible ? true : 'legendonly',
-              line: {
-                color: curveSettings.color,
-                width: curveSettings.width,
-              },
               hovertemplate: `${fileName}<br>${yData.name}<br>%{x}<br>%{y}<extra></extra>`,
             });
+
+            if (curveSettings.showPeaks) {
+              const { peaks, valleys } = detectPeaks(xData, yValues);
+              if (peaks.x.length > 0) {
+                allTraces.push({
+                  x: peaks.x, y: peaks.y, type: 'scatter', mode: 'markers',
+                  name: `${fileName} - ${yData.name} peaks`,
+                  marker: { color: '#ff0000', size: 8, symbol: 'triangle-up' },
+                  visible: curveSettings.visible ? true : 'legendonly',
+                  showlegend: false, hovertemplate: 'Peak<br>%{x}<br>%{y}<extra></extra>',
+                });
+              }
+              if (valleys.x.length > 0) {
+                allTraces.push({
+                  x: valleys.x, y: valleys.y, type: 'scatter', mode: 'markers',
+                  name: `${fileName} - ${yData.name} valleys`,
+                  marker: { color: '#0000ff', size: 8, symbol: 'triangle-down' },
+                  visible: curveSettings.visible ? true : 'legendonly',
+                  showlegend: false, hovertemplate: 'Valley<br>%{x}<br>%{y}<extra></extra>',
+                });
+              }
+            }
           });
         });
       }
@@ -115,7 +240,8 @@ function GraphDisplay({
     // Single file mode
     if (!data || !settings.curves) return [];
 
-    return data.y_data.map((yData, idx) => {
+    const singleTraces = [];
+    data.y_data.forEach((yData, idx) => {
       const curveSettings = settings.curves[idx] || {
         visible: true,
         color: '#1f77b4',
@@ -131,25 +257,58 @@ function GraphDisplay({
         xValues = normalizeXData(xValues);
       }
 
+      // Apply per-curve transforms (smoothing, derivative/integral, multiply, offset)
+      yValues = applyTransforms(yValues, xValues, curveSettings);
+
       // Invert Y data if enabled
       if (settings.invertData) {
         yValues = invertYData(yValues);
       }
 
-      return {
+      const typeProps = getChartTypeProps(curveSettings.chartType, curveSettings.color, curveSettings.width);
+
+      singleTraces.push({
         x: xValues,
         y: yValues,
-        type: 'scatter',
-        mode: 'lines',
+        ...typeProps,
         name: yData.name,
         visible: curveSettings.visible ? true : 'legendonly',
-        line: {
-          color: curveSettings.color,
-          width: curveSettings.width,
-        },
         hovertemplate: '%{x}<br>%{y}<extra></extra>',
-      };
+      });
+
+      // Add peak/valley markers if enabled
+      if (curveSettings.showPeaks) {
+        const { peaks, valleys } = detectPeaks(xValues, yValues);
+        if (peaks.x.length > 0) {
+          singleTraces.push({
+            x: peaks.x,
+            y: peaks.y,
+            type: 'scatter',
+            mode: 'markers',
+            name: `${yData.name} peaks`,
+            marker: { color: '#ff0000', size: 8, symbol: 'triangle-up' },
+            visible: curveSettings.visible ? true : 'legendonly',
+            showlegend: false,
+            hovertemplate: 'Peak<br>%{x}<br>%{y}<extra></extra>',
+          });
+        }
+        if (valleys.x.length > 0) {
+          singleTraces.push({
+            x: valleys.x,
+            y: valleys.y,
+            type: 'scatter',
+            mode: 'markers',
+            name: `${yData.name} valleys`,
+            marker: { color: '#0000ff', size: 8, symbol: 'triangle-down' },
+            visible: curveSettings.visible ? true : 'legendonly',
+            showlegend: false,
+            hovertemplate: 'Valley<br>%{x}<br>%{y}<extra></extra>',
+          });
+        }
+      }
     });
+
+    return singleTraces;
   }, [data, settings, isCompareMode, compareData, compareCurveSettings, compareSettings]);
 
   // Generate layout
@@ -239,11 +398,13 @@ function GraphDisplay({
               }
             : null,
           tickfont: { color: isDark ? '#e8e8e8' : '#212529' },
+          showgrid: compareSettings.showGrid !== false,
           gridcolor: isDark ? '#3a3a5a' : '#e9ecef',
           zerolinecolor: isDark ? '#3a3a5a' : '#dee2e6',
           tickformat: xFormat.tickformat,
           exponentformat: xFormat.exponentformat,
           minexponent: xFormat.minexponent,
+          type: compareSettings.logScaleX ? 'log' : 'linear',
         },
         yaxis: {
           title: compareSettings.showAxisLabels
@@ -253,11 +414,13 @@ function GraphDisplay({
               }
             : null,
           tickfont: { color: isDark ? '#e8e8e8' : '#212529' },
+          showgrid: compareSettings.showGrid !== false,
           gridcolor: isDark ? '#3a3a5a' : '#e9ecef',
           zerolinecolor: isDark ? '#3a3a5a' : '#dee2e6',
           tickformat: yFormat.tickformat,
           exponentformat: yFormat.exponentformat,
           minexponent: yFormat.minexponent,
+          type: compareSettings.logScaleY ? 'log' : 'linear',
         },
         paper_bgcolor: 'transparent',
         plot_bgcolor: bgColor,
@@ -276,7 +439,7 @@ function GraphDisplay({
           font: { size: 11, color: isDark ? '#e8e8e8' : '#212529' },
           bgcolor: 'transparent',
         },
-        hovermode: 'closest',
+        hovermode: compareSettings.crosshair ? 'x unified' : 'closest',
         dragmode: 'zoom',
         shapes: shapes,
         annotations: annotations,
@@ -315,11 +478,13 @@ function GraphDisplay({
             }
           : null,
         tickfont: { color: isDark ? '#e8e8e8' : '#212529' },
+        showgrid: settings.showGrid !== false,
         gridcolor: isDark ? '#3a3a5a' : '#e9ecef',
         zerolinecolor: isDark ? '#3a3a5a' : '#dee2e6',
         tickformat: xFormat.tickformat,
         exponentformat: xFormat.exponentformat,
         minexponent: xFormat.minexponent,
+        type: settings.logScaleX ? 'log' : 'linear',
       },
       yaxis: {
         title: settings.showAxisLabels
@@ -329,11 +494,13 @@ function GraphDisplay({
             }
           : null,
         tickfont: { color: isDark ? '#e8e8e8' : '#212529' },
+        showgrid: settings.showGrid !== false,
         gridcolor: isDark ? '#3a3a5a' : '#e9ecef',
         zerolinecolor: isDark ? '#3a3a5a' : '#dee2e6',
         tickformat: yFormat.tickformat,
         exponentformat: yFormat.exponentformat,
         minexponent: yFormat.minexponent,
+        type: settings.logScaleY ? 'log' : 'linear',
       },
       paper_bgcolor: 'transparent',
       plot_bgcolor: bgColor,
@@ -352,7 +519,7 @@ function GraphDisplay({
         font: { size: 12, color: isDark ? '#e8e8e8' : '#212529' },
         bgcolor: 'transparent',
       },
-      hovermode: 'closest',
+      hovermode: settings.crosshair ? 'x unified' : 'closest',
       dragmode: 'zoom', // Enable zoom by default
     };
   }, [data, settings, theme, isCompareMode, compareData, compareSettings]);

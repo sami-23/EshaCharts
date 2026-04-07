@@ -3,6 +3,30 @@ EshaCharts Update Log
 ==================================================
 
 --------------------------------------------------
+v1.2 - 2026-04-07
+--------------------------------------------------
+Chart Types:
+- Added per-curve chart type selector (Line, Bar, Scatter, Area, Step)
+- Each curve can independently use a different chart type
+
+Data Tools:
+- Added per-curve math operations: Multiply (scale factor) and Offset
+- Added per-curve Transform: Derivative (dy/dx) and Integral (cumulative)
+- Added per-curve Smoothing slider (moving average, window 0-50)
+- Added per-curve Peak Detection toggle (marks maxima in red, minima in blue)
+
+UX Improvements:
+- Added grid toggle (show/hide grid lines)
+- Added log scale option for X and Y axes independently
+- Added crosshair mode (unified X hover showing all Y values)
+- Added undo/redo for all settings changes (50-step history)
+- Added style presets: save, load, and delete graph styles (stored in browser)
+
+Export:
+- Added "Copy to Clipboard" button (copies graph as PNG image)
+- Added "Export CSV (with transforms)" button (exports modified data)
+
+--------------------------------------------------
 v1.1 - 2026-04-07
 --------------------------------------------------
 - Added "Invert Data" checkbox in single file view
