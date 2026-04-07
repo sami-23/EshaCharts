@@ -1,0 +1,12 @@
+==================================================
+EshaCharts Update Log
+==================================================
+
+--------------------------------------------------
+v1.1 - 2026-04-07
+--------------------------------------------------
+- Added "Invert Data" checkbox in single file view
+- Added "Invert Data" checkbox in compare view (overlay and sequential)
+- Inversion negates all Y values (positive becomes negative, vice versa)
+- Graph updates immediately when toggled
+- Inversion applied in batch export as well
