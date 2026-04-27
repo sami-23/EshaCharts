@@ -44,6 +44,7 @@ function ControlPanel({
   onRedo,
   canUndo,
   canRedo,
+  onResetView,
 }) {
   const [exportFormat, setExportFormat] = useState('png');
   const [isExporting, setIsExporting] = useState(false);
@@ -410,6 +411,14 @@ function ControlPanel({
           style={{ flex: 1, opacity: canRedo ? 1 : 0.4 }}
         >
           Redo
+        </button>
+        <button
+          className="export-btn secondary"
+          onClick={onResetView}
+          title="Reset zoom and pan to default view"
+          style={{ flex: 1 }}
+        >
+          Reset View
         </button>
       </div>
 

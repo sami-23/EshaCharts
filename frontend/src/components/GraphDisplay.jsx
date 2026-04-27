@@ -12,6 +12,9 @@ function GraphDisplay({
   compareData,
   compareCurveSettings,
   compareSettings,
+  zoomState,
+  onZoomChange,
+  onTitleEdit,
 }) {
   const plotRef = useRef(null);
 
@@ -405,6 +408,7 @@ function GraphDisplay({
           exponentformat: xFormat.exponentformat,
           minexponent: xFormat.minexponent,
           type: compareSettings.logScaleX ? 'log' : 'linear',
+          ...(zoomState?.xRange ? { range: zoomState.xRange, autorange: false } : { autorange: true }),
         },
         yaxis: {
           title: compareSettings.showAxisLabels
@@ -421,6 +425,7 @@ function GraphDisplay({
           exponentformat: yFormat.exponentformat,
           minexponent: yFormat.minexponent,
           type: compareSettings.logScaleY ? 'log' : 'linear',
+          ...(zoomState?.yRange ? { range: zoomState.yRange, autorange: false } : { autorange: true }),
         },
         paper_bgcolor: 'transparent',
         plot_bgcolor: bgColor,
@@ -485,6 +490,7 @@ function GraphDisplay({
         exponentformat: xFormat.exponentformat,
         minexponent: xFormat.minexponent,
         type: settings.logScaleX ? 'log' : 'linear',
+        ...(zoomState?.xRange ? { range: zoomState.xRange, autorange: false } : { autorange: true }),
       },
       yaxis: {
         title: settings.showAxisLabels
@@ -501,6 +507,7 @@ function GraphDisplay({
         exponentformat: yFormat.exponentformat,
         minexponent: yFormat.minexponent,
         type: settings.logScaleY ? 'log' : 'linear',
+        ...(zoomState?.yRange ? { range: zoomState.yRange, autorange: false } : { autorange: true }),
       },
       paper_bgcolor: 'transparent',
       plot_bgcolor: bgColor,
@@ -522,7 +529,7 @@ function GraphDisplay({
       hovermode: settings.crosshair ? 'x unified' : 'closest',
       dragmode: 'zoom', // Enable zoom by default
     };
-  }, [data, settings, theme, isCompareMode, compareData, compareSettings]);
+  }, [data, settings, theme, isCompareMode, compareData, compareSettings, zoomState]);
 
   // Determine filename for export
   const exportFilename = useMemo(() => {
@@ -546,6 +553,7 @@ function GraphDisplay({
             path: 'M256 56c110.532 0 200 89.451 200 200 0 110.532-89.451 200-200 200-110.532 0-200-89.451-200-200 0-110.532 89.451-200 200-200m0-56C119.033 0 8 111.033 8 248s111.033 248 248 248 248-111.033 248-248S392.967 0 256 0zm0 168c-44.183 0-80 35.817-80 80s35.817 80 80 80 80-35.817 80-80-35.817-80-80-80z',
           },
           click: function (gd) {
+            onZoomChange?.(null);
             window.Plotly.relayout(gd, {
               'xaxis.autorange': true,
               'yaxis.autorange': true,
@@ -583,10 +591,22 @@ function GraphDisplay({
         style={{ width: '100%', height: '100%' }}
         useResizeHandler={true}
         onRelayout={(e) => {
-          // Store zoom state for potential use
-          if (e['xaxis.range[0]'] !== undefined) {
-            console.log('Zoom applied:', e);
+          // Capture zoom/pan ranges
+          if (e['xaxis.range[0]'] !== undefined || e['yaxis.range[0]'] !== undefined) {
+            const newZoom = { ...(zoomState || {}) };
+            if (e['xaxis.range[0]'] !== undefined) newZoom.xRange = [e['xaxis.range[0]'], e['xaxis.range[1]']];
+            if (e['yaxis.range[0]'] !== undefined) newZoom.yRange = [e['yaxis.range[0]'], e['yaxis.range[1]']];
+            onZoomChange?.(newZoom);
+          } else if (e['xaxis.autorange'] === true || e['yaxis.autorange'] === true) {
+            // User reset axes via Plotly toolbar
+            onZoomChange?.(null);
           }
+          // Capture inline title edits (double-click on title/axis labels in Plotly)
+          const titleUpdates = {};
+          if (e['title.text'] !== undefined) titleUpdates.customTitle = e['title.text'];
+          if (e['xaxis.title.text'] !== undefined) titleUpdates.customXLabel = e['xaxis.title.text'];
+          if (e['yaxis.title.text'] !== undefined) titleUpdates.customYLabel = e['yaxis.title.text'];
+          if (Object.keys(titleUpdates).length > 0) onTitleEdit?.(titleUpdates);
         }}
       />
     </div>

@@ -2,6 +2,9 @@
 EshaCharts Feature Todo List
 ==================================================
 
+[DONE] Save graph view state (zoom, pan) per file across navigation
+[DONE] Save inline title/axis label edits made directly in the graph
+[DONE] Reset View button to restore default autorange per file / compare view
 [DONE] Add "Invert Data" checkbox in single and multi view
 [DONE] Chart type selector per curve (Line, Bar, Scatter, Area, Step)
 [DONE] Grid toggle (show/hide grid lines)

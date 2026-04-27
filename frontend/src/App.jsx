@@ -37,6 +37,7 @@ function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentData, setCurrentData] = useState(null);
   const [graphSettings, setGraphSettings] = useState({}); // Per-file settings
+  const [zoomStates, setZoomStates] = useState({}); // Per-file zoom/pan state (keyed by index or 'compare')
   const settingsHistory = useRef([]); // undo stack
   const settingsFuture = useRef([]); // redo stack
   const [isLoading, setIsLoading] = useState(false);
@@ -412,6 +413,7 @@ function App() {
     setIsCompareMode(false);
     setCompareFileIndices([]);
     setCompareCurveSettings({});
+    setZoomStates((prev) => { const next = { ...prev }; delete next['compare']; return next; });
     setCompareSettings({
       showTitle: true,
       showAxisLabels: true,
@@ -442,6 +444,20 @@ function App() {
       ...prev,
       [curveKey]: { ...prev[curveKey], ...updates },
     }));
+  }, []);
+
+  // Save zoom/pan state for a graph (key = file index or 'compare')
+  const handleZoomChange = useCallback((key, state) => {
+    setZoomStates((prev) => ({ ...prev, [key]: state }));
+  }, []);
+
+  // Clear zoom/pan state for a graph (restores autorange)
+  const handleResetView = useCallback((key) => {
+    setZoomStates((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   }, []);
 
   // Reset session
@@ -549,6 +565,9 @@ function App() {
                   compareData={compareData}
                   compareCurveSettings={compareCurveSettings}
                   compareSettings={compareSettings}
+                  zoomState={zoomStates['compare']}
+                  onZoomChange={(state) => handleZoomChange('compare', state)}
+                  onTitleEdit={updateCompareSettings}
                 />
               ) : currentData ? (
                 <GraphDisplay
@@ -556,6 +575,9 @@ function App() {
                   settings={currentSettings}
                   theme={theme}
                   isCompareMode={false}
+                  zoomState={zoomStates[currentIndex]}
+                  onZoomChange={(state) => handleZoomChange(currentIndex, state)}
+                  onTitleEdit={updateSettings}
                 />
               ) : null}
             </div>
@@ -580,6 +602,7 @@ function App() {
                   onUpdateSettings={updateCompareSettings}
                   onUpdateCurve={updateCompareCurve}
                   theme={theme}
+                  onResetView={() => handleResetView('compare')}
                 />
               ) : currentData && (
                 <ControlPanel
@@ -596,6 +619,7 @@ function App() {
                   onRedo={redo}
                   canUndo={canUndo}
                   canRedo={canRedo}
+                  onResetView={() => handleResetView(currentIndex)}
                 />
               )}
             </div>

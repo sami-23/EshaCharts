@@ -35,6 +35,7 @@ function CompareControlPanel({
   onUpdateSettings,
   onUpdateCurve,
   theme,
+  onResetView,
 }) {
   const [exportFormat, setExportFormat] = useState('png');
   const [isExporting, setIsExporting] = useState(false);
@@ -120,6 +121,18 @@ function CompareControlPanel({
   return (
     <div className="control-panel">
       <h3>Comparison Controls</h3>
+
+      {/* Reset View */}
+      <div className="control-section">
+        <button
+          className="export-btn secondary"
+          onClick={onResetView}
+          title="Reset zoom and pan to default view"
+          style={{ width: '100%' }}
+        >
+          Reset View
+        </button>
+      </div>
 
       {/* Display Options */}
       <div className="control-section">

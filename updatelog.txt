@@ -3,6 +3,17 @@ EshaCharts Update Log
 ==================================================
 
 --------------------------------------------------
+v1.3 - 2026-04-27
+--------------------------------------------------
+Graph View State Persistence:
+- Zoom and pan state is now saved per file - navigating away and back restores the exact view
+- Compare mode view (zoom/pan) is also saved independently while compare is active
+- Inline title edits (double-clicking chart title or axis labels in Plotly) are now saved back to settings and persist across navigation
+- Added "Reset View" button in ControlPanel (alongside Undo/Redo) to restore autorange for the current file
+- Added "Reset View" button at the top of CompareControlPanel for compare mode
+- Plotly toolbar "Reset Axes" button also clears the saved zoom state in sync
+
+--------------------------------------------------
 v1.2 - 2026-04-07
 --------------------------------------------------
 Chart Types:
