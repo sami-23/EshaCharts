@@ -500,7 +500,10 @@ function App() {
   return (
     <div className={`app ${theme}`}>
       <header className="app-header">
-        <h1>EshaCharts</h1>
+        <div className="app-title">
+          <h1>EshaCharts</h1>
+          <span className="app-version">v1.4</span>
+        </div>
         <div className="header-controls">
           <button
             className="theme-toggle"

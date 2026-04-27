@@ -2,6 +2,7 @@
 EshaCharts Feature Todo List
 ==================================================
 
+[DONE] Version number display in header
 [DONE] Save graph view state (zoom, pan) per file across navigation
 [DONE] Save inline title/axis label edits made directly in the graph
 [DONE] Reset View button to restore default autorange per file / compare view

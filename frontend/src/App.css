@@ -58,10 +58,23 @@ body {
   box-shadow: var(--shadow);
 }
 
+.app-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
 .app-header h1 {
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--accent-color);
+}
+
+.app-version {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  opacity: 0.7;
 }
 
 .header-controls {
