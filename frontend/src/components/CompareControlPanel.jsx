@@ -221,6 +221,18 @@ function CompareControlPanel({
           </select>
         </div>
 
+        <div className="control-row">
+          <label>Y Zoom</label>
+          <select
+            value={compareSettings.compareYZoom || 'auto'}
+            onChange={(e) => onUpdateSettings({ compareYZoom: e.target.value })}
+          >
+            <option value="auto">Auto</option>
+            <option value="current">Current file</option>
+            <option value="union">Union of all files</option>
+          </select>
+        </div>
+
         <div className="control-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.5rem' }}>
           <label>Custom Title</label>
           <input

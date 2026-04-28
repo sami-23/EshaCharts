@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 
 console.log('%c EshaCharts v1.6 ', 'background:#1f77b4;color:#fff;font-size:14px;padding:4px 8px;border-radius:4px;');
 import FileUpload from './components/FileUpload';
@@ -56,6 +56,7 @@ function App() {
   const [isCompareMode, setIsCompareMode] = useState(false);
   const [compareFileIndices, setCompareFileIndices] = useState([]);
   const [showFileSelector, setShowFileSelector] = useState(false);
+  const [pendingCompareIndices, setPendingCompareIndices] = useState(null); // waiting for style choice
   const [compareSettings, setCompareSettings] = useState({
     showTitle: true,
     showAxisLabels: true,
@@ -72,6 +73,7 @@ function App() {
     crosshair: false,
     bgColor: '',
     compareLayout: 'sequential', // 'overlay' or 'sequential'
+    compareYZoom: 'auto', // 'auto' | 'current' | 'union'
   });
   const [compareCurveSettings, setCompareCurveSettings] = useState({});
 
@@ -374,21 +376,33 @@ function App() {
     setShowFileSelector(true);
   }, []);
 
-  // Confirm compare selection - validates and initializes compare mode
+  // Confirm compare selection - pause to ask about styles
   const confirmCompareSelection = useCallback((selectedIndices) => {
-    if (selectedIndices.length < 2) {
-      return; // Need at least 2 files
-    }
+    if (selectedIndices.length < 2) return;
+    setShowFileSelector(false);
+    setPendingCompareIndices(selectedIndices);
+  }, []);
 
-    // Initialize curve settings for all selected files
+  // Enter compare mode with either raw defaults or per-file saved styles
+  const applyCompareWithStyle = useCallback((useStyles) => {
+    const selectedIndices = pendingCompareIndices;
+    if (!selectedIndices) return;
+
     const newCurveSettings = {};
     selectedIndices.forEach((fileIndex, fileColorIdx) => {
       const file = files[fileIndex];
+      const savedCurves = graphSettings[fileIndex]?.curves || [];
       const baseColor = fileColors[fileColorIdx % fileColors.length];
 
       file.y_data.forEach((curve, curveIdx) => {
         const curveKey = `${fileIndex}-${curveIdx}`;
-        newCurveSettings[curveKey] = {
+        const saved = savedCurves[curveIdx];
+
+        newCurveSettings[curveKey] = useStyles && saved ? {
+          ...saved,
+          name: curve.name,
+          fileName: file.filename || file.title,
+        } : {
           visible: true,
           color: baseColor,
           width: 2,
@@ -404,11 +418,23 @@ function App() {
       });
     });
 
+    // If using styles, carry over invertData and normalizeX from the first file
+    if (useStyles) {
+      const firstSettings = graphSettings[selectedIndices[0]];
+      if (firstSettings) {
+        setCompareSettings((prev) => ({
+          ...prev,
+          invertData: firstSettings.invertData || false,
+          normalizeX: firstSettings.normalizeX !== undefined ? firstSettings.normalizeX : prev.normalizeX,
+        }));
+      }
+    }
+
     setCompareCurveSettings(newCurveSettings);
     setCompareFileIndices(selectedIndices);
-    setShowFileSelector(false);
+    setPendingCompareIndices(null);
     setIsCompareMode(true);
-  }, [files, fileColors]);
+  }, [pendingCompareIndices, files, graphSettings, fileColors]);
 
   // Exit compare mode
   const exitCompareMode = useCallback(() => {
@@ -432,6 +458,7 @@ function App() {
       crosshair: false,
       bgColor: '',
       compareLayout: 'overlay',
+      compareYZoom: 'auto',
     });
   }, []);
 
@@ -452,6 +479,41 @@ function App() {
   const handleZoomChange = useCallback((key, state) => {
     setZoomStates((prev) => ({ ...prev, [key]: state }));
   }, []);
+
+  // Recompute compare Y zoom whenever the setting or source zoom states change
+  useEffect(() => {
+    if (!isCompareMode) return;
+    const mode = compareSettings.compareYZoom;
+
+    if (mode === 'auto') {
+      setZoomStates((prev) => { const next = { ...prev }; delete next['compare']; return next; });
+      return;
+    }
+
+    if (mode === 'current') {
+      const sourceZoom = zoomStates[currentIndex];
+      if (sourceZoom?.yRange) {
+        setZoomStates((prev) => ({ ...prev, compare: { yRange: sourceZoom.yRange } }));
+      } else {
+        setZoomStates((prev) => { const next = { ...prev }; delete next['compare']; return next; });
+      }
+      return;
+    }
+
+    if (mode === 'union') {
+      const yMins = [];
+      const yMaxes = [];
+      compareFileIndices.forEach((idx) => {
+        const z = zoomStates[idx];
+        if (z?.yRange) { yMins.push(z.yRange[0]); yMaxes.push(z.yRange[1]); }
+      });
+      if (yMins.length > 0) {
+        setZoomStates((prev) => ({ ...prev, compare: { yRange: [Math.min(...yMins), Math.max(...yMaxes)] } }));
+      } else {
+        setZoomStates((prev) => { const next = { ...prev }; delete next['compare']; return next; });
+      }
+    }
+  }, [isCompareMode, compareSettings.compareYZoom, currentIndex, compareFileIndices]); // eslint-disable-line
 
   // Clear zoom/pan state for a graph (restores autorange)
   const handleResetView = useCallback((key) => {
