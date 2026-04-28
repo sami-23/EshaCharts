@@ -596,36 +596,6 @@ body {
   color: var(--text-secondary);
 }
 
-/* Style choice dialog buttons */
-.style-choice-btn {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 1rem 1.25rem;
-  border: 2px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 0.15s, background 0.15s;
-  width: 100%;
-}
-
-.style-choice-btn:hover {
-  border-color: var(--accent-color);
-  background: var(--bg-tertiary);
-}
-
-.style-choice-btn strong {
-  font-size: 0.95rem;
-}
-
-.style-choice-btn span {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
 /* Responsive */
 @media (max-width: 1024px) {
   .workspace {
@@ -677,6 +647,17 @@ body {
   justify-content: center;
 }
 
+@keyframes axisModalEnter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .axis-selector-modal {
   background-color: var(--bg-secondary);
   border-radius: 16px;
@@ -684,6 +665,39 @@ body {
   box-shadow: var(--shadow);
   width: 100%;
   max-width: 600px;
+  animation: axisModalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Progress dots */
+.axis-progress {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 0.5rem 0 1rem;
+}
+
+.axis-progress-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border-color);
+  transition: background 0.25s, transform 0.25s;
+}
+
+.axis-progress-dot.done {
+  background: var(--success-color);
+}
+
+.axis-progress-dot.active {
+  background: var(--accent-color);
+  transform: scale(1.4);
+}
+
+/* Confirmed button state */
+.axis-btn.primary.confirmed {
+  background: var(--success-color) !important;
+  border-color: var(--success-color) !important;
+  cursor: default;
 }
 
 .axis-selector-modal h2 {
@@ -1139,4 +1153,92 @@ body {
 
 .file-curves-group .curve-editor:last-child {
   border-radius: 0 0 6px 6px;
+}
+
+/* Dual-handle range slider */
+.dual-range-section {
+  padding: 0.25rem 0;
+}
+
+.dual-range-container {
+  position: relative;
+  height: 28px;
+  margin: 0.25rem 0;
+}
+
+.dual-range {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 100%;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  outline: none;
+  margin: 0;
+  padding: 0;
+  height: 4px;
+}
+
+.dual-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-color);
+}
+
+.dual-range::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-color);
+}
+
+.dual-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--slider-color, var(--accent-color));
+  cursor: pointer;
+  pointer-events: all;
+  border: 2px solid var(--bg-secondary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  margin-top: -6px;
+}
+
+.dual-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--slider-color, var(--accent-color));
+  cursor: pointer;
+  pointer-events: all;
+  border: 2px solid var(--bg-secondary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.dual-range-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.3rem;
+}
+
+.dual-range-labels {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.dual-range-invert-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
 }

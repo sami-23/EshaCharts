@@ -12,6 +12,7 @@ function GraphDisplay({
   compareData,
   compareCurveSettings,
   compareSettings,
+  compareXRanges,
   zoomState,
   onZoomChange,
   onTitleEdit,
@@ -128,16 +129,25 @@ function GraphDisplay({
 
       if (isSequential) {
         // Sequential mode: place each file's data one after another (no gap)
+        const shouldEqualize = compareSettings?.equalizeSegments;
         let xOffset = 0;
 
         compareData.forEach((fileData, fileIdx) => {
           const fileName = fileData.filename || fileData.title || `File ${fileIdx + 1}`;
-          const xData = fileData.x_data.map((v) => (typeof v === 'number' ? v : parseFloat(v) || 0));
+          const fileIndex = fileData._compareFileIndex;
+          const xRange_ = compareXRanges?.[fileIndex];
+          const startIdx = xRange_?.start ?? 0;
+          const endIdx = xRange_?.end ?? (fileData.x_data.length - 1);
+
+          const rawX = fileData.x_data.slice(startIdx, endIdx + 1);
+          const xData = rawX.map((v) => (typeof v === 'number' ? v : parseFloat(v) || 0));
           const xMin = Math.min(...xData);
           const xMax = Math.max(...xData);
           const xRange = xMax - xMin;
+          const segWidth = shouldEqualize ? 1.0 : xRange;
 
           fileData.y_data.forEach((yData, curveIdx) => {
+            const trimmedYData = { ...yData, data: yData.data.slice(startIdx, endIdx + 1) };
             const curveKey = `${fileData._compareFileIndex}-${curveIdx}`;
             const curveSettings = compareCurveSettings[curveKey] || {
               visible: true,
@@ -145,9 +155,13 @@ function GraphDisplay({
               width: 2,
             };
 
-            const offsetXData = xData.map((v) => v - xMin + xOffset);
-            let yValues = applyTransforms(yData.data, xData, curveSettings);
+            const normalizedX = shouldEqualize && xRange > 0
+              ? xData.map((v) => (v - xMin) / xRange)
+              : xData.map((v) => v - xMin);
+            const offsetXData = normalizedX.map((v) => v + xOffset);
+            let yValues = applyTransforms(trimmedYData.data, xData, curveSettings);
             if (shouldInvert) yValues = invertYData(yValues);
+            if (compareXRanges?.[fileIndex]?.invert) yValues = invertYData(yValues);
             const typeProps = getChartTypeProps(curveSettings.chartType, curveSettings.color, curveSettings.width);
 
             allTraces.push({
@@ -182,16 +196,22 @@ function GraphDisplay({
             }
           });
 
-          // No gap - files are placed directly adjacent
-          xOffset += xRange;
+          xOffset += segWidth;
         });
       } else {
         // Overlay mode: all files share the same x-axis
         compareData.forEach((fileData, fileIdx) => {
           const fileName = fileData.filename || fileData.title || `File ${fileIdx + 1}`;
-          const xData = shouldNormalize ? normalizeXData(fileData.x_data) : fileData.x_data;
+          const fileIndex = fileData._compareFileIndex;
+          const xRange_ = compareXRanges?.[fileIndex];
+          const startIdx = xRange_?.start ?? 0;
+          const endIdx = xRange_?.end ?? (fileData.x_data.length - 1);
+
+          const rawX = fileData.x_data.slice(startIdx, endIdx + 1);
+          const xData = shouldNormalize ? normalizeXData(rawX) : rawX;
 
           fileData.y_data.forEach((yData, curveIdx) => {
+            const trimmedYData = { ...yData, data: yData.data.slice(startIdx, endIdx + 1) };
             const curveKey = `${fileData._compareFileIndex}-${curveIdx}`;
             const curveSettings = compareCurveSettings[curveKey] || {
               visible: true,
@@ -199,8 +219,9 @@ function GraphDisplay({
               width: 2,
             };
 
-            let yValues = applyTransforms(yData.data, fileData.x_data, curveSettings);
+            let yValues = applyTransforms(trimmedYData.data, xData, curveSettings);
             if (shouldInvert) yValues = invertYData(yValues);
+            if (compareXRanges?.[fileIndex]?.invert) yValues = invertYData(yValues);
             const typeProps = getChartTypeProps(curveSettings.chartType, curveSettings.color, curveSettings.width);
 
             allTraces.push({
@@ -344,14 +365,21 @@ function GraphDisplay({
       const shapes = [];
       const annotations = [];
       if (isSequential && compareData.length > 1) {
+        const shouldEqualize = compareSettings?.equalizeSegments;
         let xOffset = 0;
         compareData.forEach((fileData, fileIdx) => {
-          const xData = fileData.x_data.map((v) => (typeof v === 'number' ? v : parseFloat(v) || 0));
+          const fileIndex = fileData._compareFileIndex;
+          const xRange_ = compareXRanges?.[fileIndex];
+          const startIdx = xRange_?.start ?? 0;
+          const endIdx = xRange_?.end ?? (fileData.x_data.length - 1);
+          const rawX = fileData.x_data.slice(startIdx, endIdx + 1);
+          const xData = rawX.map((v) => (typeof v === 'number' ? v : parseFloat(v) || 0));
           const xMin = Math.min(...xData);
           const xMax = Math.max(...xData);
           const xRange = xMax - xMin;
+          const segWidth = shouldEqualize ? 1.0 : xRange;
           const segStart = xOffset;
-          const segEnd = xOffset + xRange;
+          const segEnd = xOffset + segWidth;
 
           // Add annotation for file name at center of segment
           const fileName = fileData.filename || fileData.title || `File ${fileIdx + 1}`;
@@ -378,8 +406,7 @@ function GraphDisplay({
             });
           }
 
-          // No gap between files
-          xOffset += xRange;
+          xOffset += segWidth;
         });
       }
 
@@ -529,7 +556,7 @@ function GraphDisplay({
       hovermode: settings.crosshair ? 'x unified' : 'closest',
       dragmode: 'zoom', // Enable zoom by default
     };
-  }, [data, settings, theme, isCompareMode, compareData, compareSettings, zoomState]);
+  }, [data, settings, theme, isCompareMode, compareData, compareSettings, compareXRanges, zoomState]);
 
   // Determine filename for export
   const exportFilename = useMemo(() => {

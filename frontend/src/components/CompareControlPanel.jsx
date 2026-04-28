@@ -28,12 +28,70 @@ const ColorSwatches = ({ value, onChange }) => (
   </div>
 );
 
+const DualRangeSlider = ({ fileIndex, xData, startIdx, endIdx, invert, color, onUpdateXRange, onToggleInvert }) => {
+  const maxIdx = xData.length - 1;
+  const sliderColor = color || 'var(--accent-color)';
+
+  const fmt = (idx) => {
+    const v = xData[idx];
+    if (v === undefined) return idx;
+    const n = typeof v === 'number' ? v : parseFloat(v) || 0;
+    return Math.abs(n) >= 1000 || (Math.abs(n) < 0.01 && n !== 0) ? n.toExponential(2) : parseFloat(n.toFixed(3));
+  };
+
+  return (
+    <div className="dual-range-section">
+      <div className="dual-range-container" style={{ '--slider-color': sliderColor }}>
+        <input
+          type="range"
+          className="dual-range"
+          min={0}
+          max={maxIdx}
+          value={startIdx}
+          onChange={(e) => {
+            const val = parseInt(e.target.value);
+            onUpdateXRange(fileIndex, Math.min(val, endIdx - 1), endIdx);
+          }}
+        />
+        <input
+          type="range"
+          className="dual-range"
+          min={0}
+          max={maxIdx}
+          value={endIdx}
+          onChange={(e) => {
+            const val = parseInt(e.target.value);
+            onUpdateXRange(fileIndex, startIdx, Math.max(val, startIdx + 1));
+          }}
+        />
+      </div>
+      <div className="dual-range-footer">
+        <div className="dual-range-labels">
+          <span>Start: {fmt(startIdx)}</span>
+          <span>End: {fmt(endIdx)}</span>
+        </div>
+        <label className="dual-range-invert-label">
+          <input
+            type="checkbox"
+            checked={invert || false}
+            onChange={(e) => onToggleInvert(fileIndex, e.target.checked)}
+          />
+          Invert
+        </label>
+      </div>
+    </div>
+  );
+};
+
 function CompareControlPanel({
   compareData,
   compareSettings,
   compareCurveSettings,
+  compareXRanges,
   onUpdateSettings,
   onUpdateCurve,
+  onUpdateXRange,
+  onUpdateFileInvert,
   theme,
   onResetView,
 }) {
@@ -134,6 +192,37 @@ function CompareControlPanel({
         </button>
       </div>
 
+      {/* Data Range Sliders */}
+      <div className="control-section">
+        <h4>Data Range</h4>
+        {compareData.map((fileData) => {
+          const fileIndex = fileData._compareFileIndex;
+          const fileName = fileData.filename || fileData.title || `File ${fileIndex + 1}`;
+          const xRange = compareXRanges?.[fileIndex];
+          const startIdx = xRange?.start ?? 0;
+          const endIdx = xRange?.end ?? (fileData.x_data.length - 1);
+          const invert = xRange?.invert ?? false;
+          const color = compareCurveSettings[`${fileIndex}-0`]?.color;
+          return (
+            <div key={fileIndex} style={{ marginBottom: '0.75rem' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fileName}>
+                {fileName}
+              </div>
+              <DualRangeSlider
+                fileIndex={fileIndex}
+                xData={fileData.x_data}
+                startIdx={startIdx}
+                endIdx={endIdx}
+                invert={invert}
+                color={color}
+                onUpdateXRange={onUpdateXRange}
+                onToggleInvert={onUpdateFileInvert}
+              />
+            </div>
+          );
+        })}
+      </div>
+
       {/* Display Options */}
       <div className="control-section">
         <h4>Display Options</h4>
@@ -221,17 +310,17 @@ function CompareControlPanel({
           </select>
         </div>
 
-        <div className="control-row">
-          <label>Y Zoom</label>
-          <select
-            value={compareSettings.compareYZoom || 'auto'}
-            onChange={(e) => onUpdateSettings({ compareYZoom: e.target.value })}
-          >
-            <option value="auto">Auto</option>
-            <option value="current">Current file</option>
-            <option value="union">Union of all files</option>
-          </select>
-        </div>
+        {compareSettings.compareLayout === 'sequential' && (
+          <div className="control-row">
+            <label>Equal Width</label>
+            <input
+              type="checkbox"
+              checked={compareSettings.equalizeSegments || false}
+              onChange={(e) => onUpdateSettings({ equalizeSegments: e.target.checked })}
+              title="Force each file to occupy equal horizontal space regardless of data range"
+            />
+          </div>
+        )}
 
         <div className="control-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.5rem' }}>
           <label>Custom Title</label>

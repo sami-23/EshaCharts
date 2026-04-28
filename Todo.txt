@@ -3,10 +3,12 @@ EshaCharts Feature Todo List
 ==================================================
 
 [DONE] Set compare mode default layout to Sequential
-[DONE] Y Zoom carry-over in compare mode (Auto / Current file / Union of all files)
-[DONE] Fix compare mode doing nothing after file selection
 [DONE] Pre-select all files by default in file selector
-[ ] Independent zoom/pan per graph in compare mode (on hold)
+[DONE] Compare mode: dual-handle X-axis range sliders per file to trim raw data
+[DONE] Compare mode: per-file Invert toggle next to each data range slider
+[DONE] Compare mode: Equal Width checkbox to force equal horizontal space per file in sequential mode
+[DONE] Compare mode: slider thumb color matches file curve color for identification
+[ ] Compare mode: zoom/style carry-over from single-file view (needs redesign)
 [DONE] Fix compare mode cramped graphs with empty space between (normalizeX default true)
 [DONE] Version number display in header
 [DONE] Save graph view state (zoom, pan) per file across navigation

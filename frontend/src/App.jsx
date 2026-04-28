@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 
-console.log('%c EshaCharts v1.7 ', 'background:#1f77b4;color:#fff;font-size:14px;padding:4px 8px;border-radius:4px;');
+console.log('%c EshaCharts v2.0 ', 'background:#1f77b4;color:#fff;font-size:14px;padding:4px 8px;border-radius:4px;');
 import FileUpload from './components/FileUpload';
 import GraphDisplay from './components/GraphDisplay';
 import ControlPanel from './components/ControlPanel';
@@ -56,7 +56,6 @@ function App() {
   const [isCompareMode, setIsCompareMode] = useState(false);
   const [compareFileIndices, setCompareFileIndices] = useState([]);
   const [showFileSelector, setShowFileSelector] = useState(false);
-  const [pendingCompareIndices, setPendingCompareIndices] = useState(null); // waiting for style choice
   const [compareSettings, setCompareSettings] = useState({
     showTitle: true,
     showAxisLabels: true,
@@ -73,9 +72,10 @@ function App() {
     crosshair: false,
     bgColor: '',
     compareLayout: 'sequential', // 'overlay' or 'sequential'
-    compareYZoom: 'auto', // 'auto' | 'current' | 'union'
+    equalizeSegments: false, // force equal x-width per file in sequential mode
   });
   const [compareCurveSettings, setCompareCurveSettings] = useState({});
+  const [compareXRanges, setCompareXRanges] = useState({}); // { [fileIndex]: { start: 0, end: N-1 } }
 
   // Initialize curve settings for a file based on its y_data
   const initializeCurveSettings = useCallback((data) => {
@@ -376,33 +376,18 @@ function App() {
     setShowFileSelector(true);
   }, []);
 
-  // Confirm compare selection - pause to ask about styles
+  // Confirm compare selection - validates and initializes compare mode
   const confirmCompareSelection = useCallback((selectedIndices) => {
     if (selectedIndices.length < 2) return;
-    setShowFileSelector(false);
-    setPendingCompareIndices(selectedIndices);
-  }, []);
-
-  // Enter compare mode with either raw defaults or per-file saved styles
-  const applyCompareWithStyle = useCallback((useStyles) => {
-    const selectedIndices = pendingCompareIndices;
-    if (!selectedIndices) return;
 
     const newCurveSettings = {};
     selectedIndices.forEach((fileIndex, fileColorIdx) => {
       const file = files[fileIndex];
-      const savedCurves = graphSettings[fileIndex]?.curves || [];
       const baseColor = fileColors[fileColorIdx % fileColors.length];
 
       file.y_data.forEach((curve, curveIdx) => {
         const curveKey = `${fileIndex}-${curveIdx}`;
-        const saved = savedCurves[curveIdx];
-
-        newCurveSettings[curveKey] = useStyles && saved ? {
-          ...saved,
-          name: curve.name,
-          fileName: file.filename || file.title,
-        } : {
+        newCurveSettings[curveKey] = {
           visible: true,
           color: baseColor,
           width: 2,
@@ -418,29 +403,25 @@ function App() {
       });
     });
 
-    // If using styles, carry over invertData and normalizeX from the first file
-    if (useStyles) {
-      const firstSettings = graphSettings[selectedIndices[0]];
-      if (firstSettings) {
-        setCompareSettings((prev) => ({
-          ...prev,
-          invertData: firstSettings.invertData || false,
-          normalizeX: firstSettings.normalizeX !== undefined ? firstSettings.normalizeX : prev.normalizeX,
-        }));
-      }
-    }
+    const newXRanges = {};
+    selectedIndices.forEach((fileIndex) => {
+      const len = files[fileIndex].x_data.length;
+      newXRanges[fileIndex] = { start: 0, end: len - 1, invert: false };
+    });
 
     setCompareCurveSettings(newCurveSettings);
+    setCompareXRanges(newXRanges);
     setCompareFileIndices(selectedIndices);
-    setPendingCompareIndices(null);
+    setShowFileSelector(false);
     setIsCompareMode(true);
-  }, [pendingCompareIndices, files, graphSettings, fileColors]);
+  }, [files, fileColors]);
 
   // Exit compare mode
   const exitCompareMode = useCallback(() => {
     setIsCompareMode(false);
     setCompareFileIndices([]);
     setCompareCurveSettings({});
+    setCompareXRanges({});
     setZoomStates((prev) => { const next = { ...prev }; delete next['compare']; return next; });
     setCompareSettings({
       showTitle: true,
@@ -458,13 +439,25 @@ function App() {
       crosshair: false,
       bgColor: '',
       compareLayout: 'overlay',
-      compareYZoom: 'auto',
+      equalizeSegments: false,
     });
   }, []);
 
   // Update compare display settings
   const updateCompareSettings = useCallback((updates) => {
     setCompareSettings((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  // Update X range for a specific file in compare mode
+  const updateCompareXRange = useCallback((fileIndex, start, end) => {
+    setCompareXRanges((prev) => ({ ...prev, [fileIndex]: { ...prev[fileIndex], start, end } }));
+    setZoomStates((prev) => { const next = { ...prev }; delete next['compare']; return next; });
+  }, []);
+
+  // Toggle per-file invert in compare mode
+  const updateCompareFileInvert = useCallback((fileIndex, invert) => {
+    setCompareXRanges((prev) => ({ ...prev, [fileIndex]: { ...prev[fileIndex], invert } }));
+    setZoomStates((prev) => { const next = { ...prev }; delete next['compare']; return next; });
   }, []);
 
   // Update individual curve in compare mode
@@ -479,41 +472,6 @@ function App() {
   const handleZoomChange = useCallback((key, state) => {
     setZoomStates((prev) => ({ ...prev, [key]: state }));
   }, []);
-
-  // Recompute compare Y zoom whenever the setting or source zoom states change
-  useEffect(() => {
-    if (!isCompareMode) return;
-    const mode = compareSettings.compareYZoom;
-
-    if (mode === 'auto') {
-      setZoomStates((prev) => { const next = { ...prev }; delete next['compare']; return next; });
-      return;
-    }
-
-    if (mode === 'current') {
-      const sourceZoom = zoomStates[currentIndex];
-      if (sourceZoom?.yRange) {
-        setZoomStates((prev) => ({ ...prev, compare: { yRange: sourceZoom.yRange } }));
-      } else {
-        setZoomStates((prev) => { const next = { ...prev }; delete next['compare']; return next; });
-      }
-      return;
-    }
-
-    if (mode === 'union') {
-      const yMins = [];
-      const yMaxes = [];
-      compareFileIndices.forEach((idx) => {
-        const z = zoomStates[idx];
-        if (z?.yRange) { yMins.push(z.yRange[0]); yMaxes.push(z.yRange[1]); }
-      });
-      if (yMins.length > 0) {
-        setZoomStates((prev) => ({ ...prev, compare: { yRange: [Math.min(...yMins), Math.max(...yMaxes)] } }));
-      } else {
-        setZoomStates((prev) => { const next = { ...prev }; delete next['compare']; return next; });
-      }
-    }
-  }, [isCompareMode, compareSettings.compareYZoom, currentIndex, compareFileIndices]); // eslint-disable-line
 
   // Clear zoom/pan state for a graph (restores autorange)
   const handleResetView = useCallback((key) => {
@@ -566,7 +524,7 @@ function App() {
       <header className="app-header">
         <div className="app-title">
           <h1>EshaCharts</h1>
-          <span className="app-version">v1.7</span>
+          <span className="app-version">v2.0</span>
         </div>
         <div className="header-controls">
           <button
@@ -588,11 +546,13 @@ function App() {
         {!sessionId && !showAxisSelector ? (
           <FileUpload onUpload={handleUpload} isLoading={isLoading} />
         ) : showAxisSelector ? (
-          <div className="axis-selector-wrapper">
+          <div className="axis-selector-wrapper" key={axisSelectIndex}>
             <AxisSelector
               data={pendingFiles[axisSelectIndex]}
               onConfirm={handleAxisConfirm}
               onCancel={handleAxisCancel}
+              currentFileIndex={axisSelectIndex}
+              totalFiles={pendingFiles.length}
             />
             <div className="axis-selector-footer">
               <p>
@@ -632,6 +592,7 @@ function App() {
                   compareData={compareData}
                   compareCurveSettings={compareCurveSettings}
                   compareSettings={compareSettings}
+                  compareXRanges={compareXRanges}
                   zoomState={zoomStates['compare']}
                   onZoomChange={(state) => handleZoomChange('compare', state)}
                   onTitleEdit={updateCompareSettings}
@@ -668,6 +629,9 @@ function App() {
                   compareCurveSettings={compareCurveSettings}
                   onUpdateSettings={updateCompareSettings}
                   onUpdateCurve={updateCompareCurve}
+                  compareXRanges={compareXRanges}
+                  onUpdateXRange={updateCompareXRange}
+                  onUpdateFileInvert={updateCompareFileInvert}
                   theme={theme}
                   onResetView={() => handleResetView('compare')}
                 />
@@ -709,41 +673,6 @@ function App() {
         />
       )}
 
-      {pendingCompareIndices && (
-        <div className="file-selector-overlay">
-          <div className="file-selector-modal" style={{ maxWidth: '480px' }}>
-            <h2>Start Comparison</h2>
-            <p className="file-selector-subtitle">
-              How would you like to display the graphs?
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', margin: '1.5rem 0' }}>
-              <button
-                className="style-choice-btn"
-                onClick={() => applyCompareWithStyle(false)}
-              >
-                <strong>Raw Data</strong>
-                <span>Default colors, no transforms applied</span>
-              </button>
-              <button
-                className="style-choice-btn"
-                onClick={() => applyCompareWithStyle(true)}
-              >
-                <strong>Use Saved Styles</strong>
-                <span>Carry over colors, widths, transforms, and invert settings from each graph</span>
-              </button>
-            </div>
-            <div className="file-selector-footer" style={{ borderTop: 'none', paddingTop: 0 }}>
-              <div />
-              <button
-                className="file-selector-btn secondary"
-                onClick={() => setPendingCompareIndices(null)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

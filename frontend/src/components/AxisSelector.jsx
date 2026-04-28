@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 
-function AxisSelector({ data, onConfirm, onCancel }) {
+function AxisSelector({ data, onConfirm, onCancel, currentFileIndex, totalFiles }) {
   const [xAxis, setXAxis] = useState(0);
   const [yAxes, setYAxes] = useState([]);
+  const [isConfirmed, setIsConfirmed] = useState(false);
 
   // Initialize with auto-detected values
   useEffect(() => {
@@ -58,7 +59,6 @@ function AxisSelector({ data, onConfirm, onCancel }) {
       return;
     }
 
-    // Build the new axis configuration
     const newConfig = {
       x_index: xAxis,
       x_name: data.columns[xAxis],
@@ -66,7 +66,8 @@ function AxisSelector({ data, onConfirm, onCancel }) {
       y_names: yAxes.map((i) => data.columns[i]),
     };
 
-    onConfirm(newConfig);
+    setIsConfirmed(true);
+    setTimeout(() => onConfirm(newConfig), 380);
   };
 
   if (!data) return null;
@@ -78,6 +79,18 @@ function AxisSelector({ data, onConfirm, onCancel }) {
         <p className="axis-selector-subtitle">
           File: <strong>{data.filename}</strong>
         </p>
+
+        {totalFiles > 1 && (
+          <div className="axis-progress">
+            {Array.from({ length: totalFiles }, (_, i) => (
+              <div
+                key={i}
+                className={`axis-progress-dot ${i < currentFileIndex ? 'done' : i === currentFileIndex ? 'active' : ''}`}
+                title={`File ${i + 1}`}
+              />
+            ))}
+          </div>
+        )}
 
         <div className="axis-selector-info">
           <p>
@@ -148,11 +161,11 @@ function AxisSelector({ data, onConfirm, onCancel }) {
             Cancel
           </button>
           <button
-            className="axis-btn primary"
+            className={`axis-btn primary${isConfirmed ? ' confirmed' : ''}`}
             onClick={handleConfirm}
-            disabled={yAxes.length === 0}
+            disabled={yAxes.length === 0 || isConfirmed}
           >
-            Confirm & Plot
+            {isConfirmed ? '✓ Confirmed!' : 'Confirm & Plot'}
           </button>
         </div>
       </div>

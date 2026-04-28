@@ -3,19 +3,40 @@ EshaCharts Update Log
 ==================================================
 
 --------------------------------------------------
+v2.0 - 2026-04-29
+--------------------------------------------------
+Compare Mode - Equal Width segments:
+- Added "Equal Width" checkbox in Display Options (Sequential layout only)
+- When enabled, each file occupies the same horizontal space on the x-axis regardless of its data range or slider trim amount
+- Implemented by normalizing each file's trimmed x data to [0, 1] before offsetting
+- Separator lines and file label annotations also respect the equal-width spacing
+
+--------------------------------------------------
+v1.9 - 2026-04-29
+--------------------------------------------------
+Compare Mode - Data Range Improvements:
+- Added per-file Invert toggle next to each data range slider
+- Inverts only that file's y-data independently (stacks with global Invert Data toggle)
+- Slider thumb color now matches the file's curve color for easy identification
+- Adjusting slider or toggling invert resets zoom so graph autoranges to new data
+
+--------------------------------------------------
+v1.8 - 2026-04-29
+--------------------------------------------------
+Data Range Sliders (Compare Mode):
+- Added dual-handle X-axis range sliders per file in compare mode
+- Sliders appear in "Data Range" section of CompareControlPanel, one per file
+- Each slider has a Start and End handle to trim raw data rows for that file
+- Graph redraws immediately as handles are dragged
+- Applies to both Sequential and Overlay layouts
+- X values (start/end) are displayed below each slider
+
+--------------------------------------------------
 v1.7 - 2026-04-29
 --------------------------------------------------
-Bug Fixes:
-- Fixed compare mode doing nothing after file selection (style choice dialog was missing from render)
 - File selector now pre-selects all files by default
-
-
-Compare Mode - Y Zoom Carry-Over:
-- New "Y Zoom" option in compare panel with 3 modes:
-  - Auto: Plotly auto-fits all data (default)
-  - Current file: applies Y range from the file you were last viewing
-  - Union of all files: expands to cover Y ranges of all selected files combined
-- Switch between modes live in the compare panel to find the best view
+- Reverted: Y Zoom carry-over feature (to be redesigned)
+- Reverted: style choice dialog (Raw Data / Use Saved Styles)
 
 --------------------------------------------------
 v1.6 - 2026-04-29
