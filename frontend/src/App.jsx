@@ -71,7 +71,7 @@ function App() {
     logScaleY: false,
     crosshair: false,
     bgColor: '',
-    compareLayout: 'overlay', // 'overlay' or 'sequential'
+    compareLayout: 'sequential', // 'overlay' or 'sequential'
   });
   const [compareCurveSettings, setCompareCurveSettings] = useState({});
 
