@@ -5,8 +5,9 @@ EshaCharts Update Log
 --------------------------------------------------
 v1.6 - 2026-04-29
 --------------------------------------------------
-Reverted: compare mode independent zoom/pan feature (to be redesigned)
-Added: version number printed to browser console on load
+- Compare mode default layout changed from Overlay to Sequential
+- Reverted: compare mode independent zoom/pan feature (to be redesigned)
+- Added: version number printed to browser console on load
 
 --------------------------------------------------
 v1.5 - 2026-04-29

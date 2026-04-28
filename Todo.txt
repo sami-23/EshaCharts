@@ -2,6 +2,7 @@
 EshaCharts Feature Todo List
 ==================================================
 
+[DONE] Set compare mode default layout to Sequential
 [ ] Independent zoom/pan per graph in compare mode (reverted, needs redesign)
 [DONE] Fix compare mode cramped graphs with empty space between (normalizeX default true)
 [DONE] Version number display in header
