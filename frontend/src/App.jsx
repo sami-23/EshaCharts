@@ -708,6 +708,42 @@ function App() {
           onCancel={() => setShowFileSelector(false)}
         />
       )}
+
+      {pendingCompareIndices && (
+        <div className="file-selector-overlay">
+          <div className="file-selector-modal" style={{ maxWidth: '480px' }}>
+            <h2>Start Comparison</h2>
+            <p className="file-selector-subtitle">
+              How would you like to display the graphs?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', margin: '1.5rem 0' }}>
+              <button
+                className="style-choice-btn"
+                onClick={() => applyCompareWithStyle(false)}
+              >
+                <strong>Raw Data</strong>
+                <span>Default colors, no transforms applied</span>
+              </button>
+              <button
+                className="style-choice-btn"
+                onClick={() => applyCompareWithStyle(true)}
+              >
+                <strong>Use Saved Styles</strong>
+                <span>Carry over colors, widths, transforms, and invert settings from each graph</span>
+              </button>
+            </div>
+            <div className="file-selector-footer" style={{ borderTop: 'none', paddingTop: 0 }}>
+              <div />
+              <button
+                className="file-selector-btn secondary"
+                onClick={() => setPendingCompareIndices(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

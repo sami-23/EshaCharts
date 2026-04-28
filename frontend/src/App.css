@@ -596,6 +596,36 @@ body {
   color: var(--text-secondary);
 }
 
+/* Style choice dialog buttons */
+.style-choice-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem 1.25rem;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  width: 100%;
+}
+
+.style-choice-btn:hover {
+  border-color: var(--accent-color);
+  background: var(--bg-tertiary);
+}
+
+.style-choice-btn strong {
+  font-size: 0.95rem;
+}
+
+.style-choice-btn span {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .workspace {

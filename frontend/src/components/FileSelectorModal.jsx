@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 function FileSelectorModal({ files, onConfirm, onCancel }) {
-  const [selectedIndices, setSelectedIndices] = useState([]);
+  const [selectedIndices, setSelectedIndices] = useState(() => files.map((_, idx) => idx));
 
   const toggleFile = (index) => {
     setSelectedIndices((prev) => {
