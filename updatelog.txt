@@ -3,6 +3,15 @@ EshaCharts Update Log
 ==================================================
 
 --------------------------------------------------
+v1.5 - 2026-04-29
+--------------------------------------------------
+Bug Fix:
+- Fixed compare mode showing datasets cramped to opposite sides with empty space in between
+- Root cause: files with non-overlapping absolute x-ranges (e.g. time-shifted measurements) caused the x-axis to span the full combined range
+- Fix: "X Start from 0" (normalizeX) now defaults to ON when entering compare mode, shifting each file's x-data to start from 0 so curves overlay correctly
+- User can still disable "X Start from 0" in Display Options if absolute x values are needed
+
+--------------------------------------------------
 v1.4 - 2026-04-27
 --------------------------------------------------
 UI:
