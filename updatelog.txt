@@ -3,6 +3,16 @@ EshaCharts Update Log
 ==================================================
 
 --------------------------------------------------
+v1.7 - 2026-04-29
+--------------------------------------------------
+Compare Mode - Y Zoom Carry-Over:
+- New "Y Zoom" option in compare panel with 3 modes:
+  - Auto: Plotly auto-fits all data (default)
+  - Current file: applies Y range from the file you were last viewing
+  - Union of all files: expands to cover Y ranges of all selected files combined
+- Switch between modes live in the compare panel to find the best view
+
+--------------------------------------------------
 v1.6 - 2026-04-29
 --------------------------------------------------
 - Compare mode default layout changed from Overlay to Sequential

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 
-console.log('%c EshaCharts v1.6 ', 'background:#1f77b4;color:#fff;font-size:14px;padding:4px 8px;border-radius:4px;');
+console.log('%c EshaCharts v1.7 ', 'background:#1f77b4;color:#fff;font-size:14px;padding:4px 8px;border-radius:4px;');
 import FileUpload from './components/FileUpload';
 import GraphDisplay from './components/GraphDisplay';
 import ControlPanel from './components/ControlPanel';
@@ -566,7 +566,7 @@ function App() {
       <header className="app-header">
         <div className="app-title">
           <h1>EshaCharts</h1>
-          <span className="app-version">v1.6</span>
+          <span className="app-version">v1.7</span>
         </div>
         <div className="header-controls">
           <button
