@@ -451,16 +451,6 @@ function App() {
     setZoomStates((prev) => ({ ...prev, [key]: state }));
   }, []);
 
-  // Per-file zoom states for compare mode (keyed by _compareFileIndex)
-  const compareZoomStates = useMemo(() => {
-    const result = {};
-    compareData.forEach((fileData) => {
-      const key = `compare-${fileData._compareFileIndex}`;
-      if (zoomStates[key] != null) result[fileData._compareFileIndex] = zoomStates[key];
-    });
-    return result;
-  }, [compareData, zoomStates]);
-
   // Zoom change handler for individual compare plots
   const handleCompareZoomChange = useCallback((fileIndex, state) => {
     setZoomStates((prev) => {
@@ -527,6 +517,16 @@ function App() {
         _compareFileIndex: fileIndex,
       }))
     : [];
+
+  // Per-file zoom states for compare mode (keyed by _compareFileIndex)
+  const compareZoomStates = useMemo(() => {
+    const result = {};
+    compareData.forEach((fileData) => {
+      const key = `compare-${fileData._compareFileIndex}`;
+      if (zoomStates[key] != null) result[fileData._compareFileIndex] = zoomStates[key];
+    });
+    return result;
+  }, [compareData, zoomStates]);
 
   return (
     <div className={`app ${theme}`}>
