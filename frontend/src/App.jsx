@@ -533,7 +533,7 @@ function App() {
       <header className="app-header">
         <div className="app-title">
           <h1>EshaCharts</h1>
-          <span className="app-version">v1.5</span>
+          <span className="app-version">v1.6</span>
         </div>
         <div className="header-controls">
           <button

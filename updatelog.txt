@@ -3,6 +3,16 @@ EshaCharts Update Log
 ==================================================
 
 --------------------------------------------------
+v1.6 - 2026-04-29
+--------------------------------------------------
+Compare Mode - Independent Zoom/Pan:
+- Each file in compare mode now gets its own separate graph panel
+- Graphs can be zoomed, panned, and scaled independently of each other
+- Layout option: Vertical (stacked, default) or Horizontal (side by side)
+- Reset View button clears zoom for all compare graphs at once
+- Each graph's toolbar Reset Axes button resets only that graph
+
+--------------------------------------------------
 v1.5 - 2026-04-29
 --------------------------------------------------
 Bug Fix:
