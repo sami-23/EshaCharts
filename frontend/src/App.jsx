@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import FileUpload from './components/FileUpload';
 import GraphDisplay from './components/GraphDisplay';
 import ControlPanel from './components/ControlPanel';
@@ -69,7 +69,7 @@ function App() {
     logScaleY: false,
     crosshair: false,
     bgColor: '',
-    compareLayout: 'overlay', // 'overlay' or 'sequential'
+    compareLayout: 'vertical', // 'vertical' or 'horizontal'
   });
   const [compareCurveSettings, setCompareCurveSettings] = useState({});
 
@@ -429,7 +429,7 @@ function App() {
       logScaleY: false,
       crosshair: false,
       bgColor: '',
-      compareLayout: 'overlay',
+      compareLayout: 'vertical',
     });
   }, []);
 
@@ -446,18 +446,49 @@ function App() {
     }));
   }, []);
 
-  // Save zoom/pan state for a graph (key = file index or 'compare')
+  // Save zoom/pan state for a graph (key = file index or 'compare-N')
   const handleZoomChange = useCallback((key, state) => {
     setZoomStates((prev) => ({ ...prev, [key]: state }));
   }, []);
 
-  // Clear zoom/pan state for a graph (restores autorange)
-  const handleResetView = useCallback((key) => {
+  // Per-file zoom states for compare mode (keyed by _compareFileIndex)
+  const compareZoomStates = useMemo(() => {
+    const result = {};
+    compareData.forEach((fileData) => {
+      const key = `compare-${fileData._compareFileIndex}`;
+      if (zoomStates[key] != null) result[fileData._compareFileIndex] = zoomStates[key];
+    });
+    return result;
+  }, [compareData, zoomStates]);
+
+  // Zoom change handler for individual compare plots
+  const handleCompareZoomChange = useCallback((fileIndex, state) => {
     setZoomStates((prev) => {
       const next = { ...prev };
-      delete next[key];
+      if (state == null) {
+        delete next[`compare-${fileIndex}`];
+      } else {
+        next[`compare-${fileIndex}`] = state;
+      }
       return next;
     });
+  }, []);
+
+  // Clear zoom/pan state (restores autorange)
+  const handleResetView = useCallback((key) => {
+    if (key === 'compare') {
+      setZoomStates((prev) => {
+        const next = { ...prev };
+        Object.keys(next).forEach((k) => { if (k.startsWith('compare-')) delete next[k]; });
+        return next;
+      });
+    } else {
+      setZoomStates((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
   }, []);
 
   // Reset session
@@ -568,8 +599,8 @@ function App() {
                   compareData={compareData}
                   compareCurveSettings={compareCurveSettings}
                   compareSettings={compareSettings}
-                  zoomState={zoomStates['compare']}
-                  onZoomChange={(state) => handleZoomChange('compare', state)}
+                  compareZoomStates={compareZoomStates}
+                  onCompareZoomChange={handleCompareZoomChange}
                   onTitleEdit={updateCompareSettings}
                 />
               ) : currentData ? (

@@ -213,11 +213,11 @@ function CompareControlPanel({
         <div className="control-row">
           <label>Layout</label>
           <select
-            value={compareSettings.compareLayout || 'overlay'}
+            value={compareSettings.compareLayout || 'vertical'}
             onChange={(e) => onUpdateSettings({ compareLayout: e.target.value })}
           >
-            <option value="overlay">Overlay</option>
-            <option value="sequential">Sequential</option>
+            <option value="vertical">Vertical (Stacked)</option>
+            <option value="horizontal">Horizontal (Side by Side)</option>
           </select>
         </div>
 
