@@ -5,6 +5,12 @@ EshaCharts Update Log
 --------------------------------------------------
 v1.6 - 2026-04-29
 --------------------------------------------------
+Hotfix:
+- Fixed white screen crash (TDZ error) caused by compareZoomStates useMemo referencing compareData before it was declared
+
+--------------------------------------------------
+v1.6 - 2026-04-29
+--------------------------------------------------
 Compare Mode - Independent Zoom/Pan:
 - Each file in compare mode now gets its own separate graph panel
 - Graphs can be zoomed, panned, and scaled independently of each other

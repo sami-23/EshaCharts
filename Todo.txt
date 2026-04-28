@@ -3,6 +3,7 @@ EshaCharts Feature Todo List
 ==================================================
 
 [DONE] Independent zoom/pan per graph in compare mode (separate plot per file)
+[DONE] Fix white screen TDZ crash from compareZoomStates referencing compareData before declaration
 [DONE] Fix compare mode cramped graphs with empty space between (normalizeX default true)
 [DONE] Version number display in header
 [DONE] Save graph view state (zoom, pan) per file across navigation
