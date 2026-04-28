@@ -5,6 +5,11 @@ EshaCharts Update Log
 --------------------------------------------------
 v1.7 - 2026-04-29
 --------------------------------------------------
+Bug Fixes:
+- Fixed compare mode doing nothing after file selection (style choice dialog was missing from render)
+- File selector now pre-selects all files by default
+
+
 Compare Mode - Y Zoom Carry-Over:
 - New "Y Zoom" option in compare panel with 3 modes:
   - Auto: Plotly auto-fits all data (default)
