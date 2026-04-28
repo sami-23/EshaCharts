@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 
 console.log('%c EshaCharts v1.6 ', 'background:#1f77b4;color:#fff;font-size:14px;padding:4px 8px;border-radius:4px;');
 import FileUpload from './components/FileUpload';
@@ -71,7 +71,7 @@ function App() {
     logScaleY: false,
     crosshair: false,
     bgColor: '',
-    compareLayout: 'vertical', // 'vertical' or 'horizontal'
+    compareLayout: 'overlay', // 'overlay' or 'sequential'
   });
   const [compareCurveSettings, setCompareCurveSettings] = useState({});
 
@@ -431,7 +431,7 @@ function App() {
       logScaleY: false,
       crosshair: false,
       bgColor: '',
-      compareLayout: 'vertical',
+      compareLayout: 'overlay',
     });
   }, []);
 
@@ -448,39 +448,18 @@ function App() {
     }));
   }, []);
 
-  // Save zoom/pan state for a graph (key = file index or 'compare-N')
+  // Save zoom/pan state for a graph (key = file index or 'compare')
   const handleZoomChange = useCallback((key, state) => {
     setZoomStates((prev) => ({ ...prev, [key]: state }));
   }, []);
 
-  // Zoom change handler for individual compare plots
-  const handleCompareZoomChange = useCallback((fileIndex, state) => {
+  // Clear zoom/pan state for a graph (restores autorange)
+  const handleResetView = useCallback((key) => {
     setZoomStates((prev) => {
       const next = { ...prev };
-      if (state == null) {
-        delete next[`compare-${fileIndex}`];
-      } else {
-        next[`compare-${fileIndex}`] = state;
-      }
+      delete next[key];
       return next;
     });
-  }, []);
-
-  // Clear zoom/pan state (restores autorange)
-  const handleResetView = useCallback((key) => {
-    if (key === 'compare') {
-      setZoomStates((prev) => {
-        const next = { ...prev };
-        Object.keys(next).forEach((k) => { if (k.startsWith('compare-')) delete next[k]; });
-        return next;
-      });
-    } else {
-      setZoomStates((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
-    }
   }, []);
 
   // Reset session
@@ -519,16 +498,6 @@ function App() {
         _compareFileIndex: fileIndex,
       }))
     : [];
-
-  // Per-file zoom states for compare mode (keyed by _compareFileIndex)
-  const compareZoomStates = useMemo(() => {
-    const result = {};
-    compareData.forEach((fileData) => {
-      const key = `compare-${fileData._compareFileIndex}`;
-      if (zoomStates[key] != null) result[fileData._compareFileIndex] = zoomStates[key];
-    });
-    return result;
-  }, [compareData, zoomStates]);
 
   return (
     <div className={`app ${theme}`}>
@@ -601,8 +570,8 @@ function App() {
                   compareData={compareData}
                   compareCurveSettings={compareCurveSettings}
                   compareSettings={compareSettings}
-                  compareZoomStates={compareZoomStates}
-                  onCompareZoomChange={handleCompareZoomChange}
+                  zoomState={zoomStates['compare']}
+                  onZoomChange={(state) => handleZoomChange('compare', state)}
                   onTitleEdit={updateCompareSettings}
                 />
               ) : currentData ? (
