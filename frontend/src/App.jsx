@@ -1,4 +1,6 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
+
+console.log('%c EshaCharts v1.6 ', 'background:#1f77b4;color:#fff;font-size:14px;padding:4px 8px;border-radius:4px;');
 import FileUpload from './components/FileUpload';
 import GraphDisplay from './components/GraphDisplay';
 import ControlPanel from './components/ControlPanel';
